@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+node_modules/
+dist/
+.vite/
+.runtime/
+*.log
+data/logs/*
+data/results/*
+!data/logs/.gitkeep
+!data/results/.gitkeep

@@ -1,0 +1,5 @@
+scenes:
+  - scene_id: comfort_demo
+    name: Comfort Demo
+    description: Local simulation scene for lighting and thermal control experiments.
+

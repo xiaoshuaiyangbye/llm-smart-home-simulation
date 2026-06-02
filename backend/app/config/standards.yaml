@@ -1,0 +1,100 @@
+standards:
+  thermal_comfort:
+    code: GB/T 33658-2025
+    name: 室内人体热舒适环境要求与评价方法
+    note: >
+      本平台未建模平均辐射温度、垂直温差、局部风速和PMV完整参数，
+      因此使用体感温度作为室内热舒适评价的简化代理指标。
+    equivalent_temperature_c:
+      summer:
+        comfortable_range: [23.6, 26.7]
+        acceptable_range: [21.4, 27.7]
+      winter:
+        comfortable_range: [21.4, 24.3]
+        acceptable_range: [17.1, 25.7]
+      transition:
+        comfortable_range: [22.0, 27.5]
+        acceptable_range: [18.0, 29.0]
+
+  indoor_air_quality:
+    code: GB/T 18883-2022
+    name: 室内空气质量标准
+    physical_requirements:
+      summer:
+        temperature_c_range: [22.0, 28.0]
+        humidity_percent_range: [40.0, 80.0]
+        max_air_velocity_m_s: 0.3
+        min_fresh_air_m3_h_person: 30
+      winter:
+        temperature_c_range: [16.0, 24.0]
+        humidity_percent_range: [30.0, 60.0]
+        max_air_velocity_m_s: 0.2
+        min_fresh_air_m3_h_person: 30
+      transition:
+        temperature_c_range: [18.0, 28.0]
+        humidity_percent_range: [30.0, 70.0]
+        max_air_velocity_m_s: 0.3
+        min_fresh_air_m3_h_person: 30
+        note: 过渡季为平台实验映射，用于无明确夏季/冬季工况时的连续评价。
+
+  lighting:
+    code: GB/T 50034-2024
+    name: 建筑照明设计标准
+    note: >
+      住宅建筑照明标准值为维持平均照度下限；本平台在评价时将标准值扩展为
+      一个实验目标范围，用于体现“达标”和“过亮”两类控制结果。
+    residential_illuminance_lux:
+      living_room:
+        idle: [100, 300]
+        study: [300, 500]
+        movie: [100, 200]
+        sleep: [0, 50]
+        away: [0, 1200]
+      bedroom:
+        idle: [75, 200]
+        study: [200, 350]
+        movie: [75, 180]
+        sleep: [0, 50]
+        away: [0, 1200]
+      study_room:
+        idle: [300, 500]
+        study: [300, 500]
+        movie: [100, 200]
+        sleep: [0, 50]
+        away: [0, 1200]
+      dining_room:
+        idle: [150, 300]
+        study: [300, 500]
+        movie: [100, 200]
+        sleep: [0, 50]
+        away: [0, 1200]
+      kitchen:
+        idle: [100, 300]
+        study: [150, 350]
+        movie: [100, 200]
+        sleep: [0, 50]
+        away: [0, 1200]
+      bathroom:
+        idle: [100, 300]
+        study: [100, 300]
+        movie: [80, 180]
+        sleep: [0, 50]
+        away: [0, 1200]
+      laundry:
+        idle: [100, 300]
+        study: [100, 300]
+        movie: [80, 180]
+        sleep: [0, 50]
+        away: [0, 1200]
+      balcony:
+        idle: [30, 300]
+        study: [100, 300]
+        movie: [30, 150]
+        sleep: [0, 50]
+        away: [0, 1200]
+      corridor:
+        idle: [30, 150]
+        study: [100, 300]
+        movie: [30, 150]
+        sleep: [0, 50]
+        away: [0, 1200]

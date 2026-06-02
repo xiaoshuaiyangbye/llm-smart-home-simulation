@@ -1,0 +1,64 @@
+rooms:
+  - room_id: living_room
+    name: 客厅
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 26
+    indoor_humidity_percent: 55
+    occupancy: true
+    activity: idle
+  - room_id: bedroom
+    name: 卧室
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 26
+    indoor_humidity_percent: 58
+    occupancy: false
+    activity: away
+  - room_id: study_room
+    name: 书房
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 27
+    indoor_humidity_percent: 54
+    occupancy: false
+    activity: away
+  - room_id: dining_room
+    name: 餐厅
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 26
+    indoor_humidity_percent: 56
+    occupancy: false
+    activity: idle
+  - room_id: kitchen
+    name: 厨房
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 26
+    indoor_humidity_percent: 60
+    occupancy: false
+    activity: idle
+  - room_id: bathroom
+    name: 卫生间
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 25
+    indoor_humidity_percent: 66
+    occupancy: false
+    activity: idle
+  - room_id: laundry
+    name: 洗衣区
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 25
+    indoor_humidity_percent: 62
+    occupancy: false
+    activity: idle
+  - room_id: balcony
+    name: 阳台
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 24
+    indoor_humidity_percent: 64
+    occupancy: false
+    activity: idle
+  - room_id: corridor
+    name: 走廊
+    indoor_illuminance_lux: 0
+    indoor_temperature_c: 25
+    indoor_humidity_percent: 58
+    occupancy: false
+    activity: idle

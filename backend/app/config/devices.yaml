@@ -1,0 +1,223 @@
+devices:
+  - entity_id: light.living_room_main
+    room: living_room
+    name: 客厅主灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 4000
+    max_lux_contribution: 650
+  - entity_id: curtain.living_room_main
+    room: living_room
+    name: 客厅窗帘
+    device_type: curtain
+    opening_pct: 60
+  - entity_id: ac.living_room_main
+    room: living_room
+    name: 客厅空调
+    device_type: ac
+    is_on: false
+    mode: "off"
+    setpoint_c: 26
+  - entity_id: fan.living_room_main
+    room: living_room
+    name: 客厅风扇
+    device_type: fan
+    is_on: false
+    speed_pct: 0
+  - entity_id: window.living_room_main
+    room: living_room
+    name: 客厅窗户
+    device_type: window
+    opening_pct: 20
+
+  - entity_id: light.bedroom_main
+    room: bedroom
+    name: 卧室主灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 3000
+    max_lux_contribution: 520
+  - entity_id: curtain.bedroom_main
+    room: bedroom
+    name: 卧室窗帘
+    device_type: curtain
+    opening_pct: 60
+  - entity_id: ac.bedroom_main
+    room: bedroom
+    name: 卧室空调
+    device_type: ac
+    is_on: false
+    mode: "off"
+    setpoint_c: 26
+  - entity_id: fan.bedroom_main
+    room: bedroom
+    name: 卧室风扇
+    device_type: fan
+    is_on: false
+    speed_pct: 0
+  - entity_id: window.bedroom_main
+    room: bedroom
+    name: 卧室窗户
+    device_type: window
+    opening_pct: 20
+
+  - entity_id: light.study_room_main
+    room: study_room
+    name: 书房主灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 5000
+    max_lux_contribution: 720
+  - entity_id: curtain.study_room_main
+    room: study_room
+    name: 书房窗帘
+    device_type: curtain
+    opening_pct: 60
+  - entity_id: ac.study_room_main
+    room: study_room
+    name: 书房空调
+    device_type: ac
+    is_on: false
+    mode: "off"
+    setpoint_c: 26
+  - entity_id: fan.study_room_main
+    room: study_room
+    name: 书房风扇
+    device_type: fan
+    is_on: false
+    speed_pct: 0
+  - entity_id: window.study_room_main
+    room: study_room
+    name: 书房窗户
+    device_type: window
+    opening_pct: 20
+
+  - entity_id: light.dining_room_main
+    room: dining_room
+    name: 餐厅主灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 3800
+    max_lux_contribution: 560
+  - entity_id: curtain.dining_room_main
+    room: dining_room
+    name: 餐厅窗帘
+    device_type: curtain
+    opening_pct: 55
+  - entity_id: ac.dining_room_main
+    room: dining_room
+    name: 餐厅空调
+    device_type: ac
+    is_on: false
+    mode: "off"
+    setpoint_c: 26
+  - entity_id: fan.dining_room_main
+    room: dining_room
+    name: 餐厅风扇
+    device_type: fan
+    is_on: false
+    speed_pct: 0
+  - entity_id: window.dining_room_main
+    room: dining_room
+    name: 餐厅窗户
+    device_type: window
+    opening_pct: 20
+
+  - entity_id: light.kitchen_main
+    room: kitchen
+    name: 厨房主灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 4500
+    max_lux_contribution: 620
+  - entity_id: curtain.kitchen_main
+    room: kitchen
+    name: 厨房窗帘
+    device_type: curtain
+    opening_pct: 50
+  - entity_id: window.kitchen_main
+    room: kitchen
+    name: 厨房窗户
+    device_type: window
+    opening_pct: 20
+
+  - entity_id: light.bathroom_main
+    room: bathroom
+    name: 卫生间主灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 4200
+    max_lux_contribution: 480
+  - entity_id: curtain.bathroom_main
+    room: bathroom
+    name: 卫生间窗帘
+    device_type: curtain
+    opening_pct: 30
+  - entity_id: window.bathroom_main
+    room: bathroom
+    name: 卫生间窗户
+    device_type: window
+    opening_pct: 15
+
+  - entity_id: light.laundry_main
+    room: laundry
+    name: 洗衣区主灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 4300
+    max_lux_contribution: 480
+  - entity_id: curtain.laundry_main
+    room: laundry
+    name: 洗衣区窗帘
+    device_type: curtain
+    opening_pct: 50
+  - entity_id: window.laundry_main
+    room: laundry
+    name: 洗衣区窗户
+    device_type: window
+    opening_pct: 20
+
+  - entity_id: light.balcony_main
+    room: balcony
+    name: 阳台灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 4000
+    max_lux_contribution: 360
+  - entity_id: curtain.balcony_main
+    room: balcony
+    name: 阳台帘
+    device_type: curtain
+    opening_pct: 80
+  - entity_id: window.balcony_main
+    room: balcony
+    name: 阳台窗
+    device_type: window
+    opening_pct: 40
+
+  - entity_id: light.corridor_main
+    room: corridor
+    name: 走廊灯
+    device_type: light
+    is_on: false
+    brightness_pct: 0
+    color_temperature_k: 4000
+    max_lux_contribution: 420
+  - entity_id: curtain.corridor_main
+    room: corridor
+    name: 走廊采光帘
+    device_type: curtain
+    opening_pct: 40
+  - entity_id: window.corridor_main
+    room: corridor
+    name: 走廊窗
+    device_type: window
+    opening_pct: 10

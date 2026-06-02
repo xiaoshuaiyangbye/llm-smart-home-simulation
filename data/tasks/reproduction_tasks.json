@@ -1,0 +1,384 @@
+{
+  "description": "智能家居复现实验任务集，覆盖单设备控制、单房间场景、全屋控制、环境舒适、多轮上下文和约束冲突六类任务。",
+  "tasks": [
+    {
+      "task_id": "P001",
+      "category": "single_device_control",
+      "user_command": "打开客厅灯光",
+      "current_room_id": "living_room",
+      "expected_intent": "basic_light_control",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light"]
+    },
+    {
+      "task_id": "P002",
+      "category": "single_device_control",
+      "user_command": "关闭卧室空调",
+      "current_room_id": "bedroom",
+      "expected_intent": "basic_ac_control",
+      "expected_room": "bedroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["ac"]
+    },
+    {
+      "task_id": "P003",
+      "category": "single_device_control",
+      "user_command": "把书房窗帘打开一些，方便采光",
+      "current_room_id": "study_room",
+      "expected_intent": "basic_curtain_control",
+      "expected_room": "study_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["curtain"]
+    },
+    {
+      "task_id": "P004",
+      "category": "single_device_control",
+      "user_command": "卫生间洗完澡有点潮，打开窗户通风",
+      "current_room_id": "bathroom",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "bathroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["window"]
+    },
+    {
+      "task_id": "P005",
+      "category": "single_device_control",
+      "user_command": "客厅风扇开到低速就好",
+      "current_room_id": "living_room",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["fan"]
+    },
+    {
+      "task_id": "P006",
+      "category": "single_device_control",
+      "user_command": "阳台光太强，把遮光帘关小一点",
+      "current_room_id": "balcony",
+      "expected_intent": "basic_curtain_control",
+      "expected_room": "balcony",
+      "expected_scope": "single_room",
+      "expected_devices": ["curtain"]
+    },
+    {
+      "task_id": "P007",
+      "category": "room_scene",
+      "user_command": "我准备学习，帮我把书房调到适合看书的状态",
+      "current_room_id": "study_room",
+      "expected_intent": "study_mode",
+      "expected_room": "study_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P008",
+      "category": "room_scene",
+      "user_command": "客厅进入观影模式，灯光暗一点，温度舒服一点",
+      "current_room_id": "living_room",
+      "expected_intent": "movie_mode",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P009",
+      "category": "room_scene",
+      "user_command": "我要睡觉了，请把卧室调到睡眠模式",
+      "current_room_id": "bedroom",
+      "expected_intent": "sleep_mode",
+      "expected_room": "bedroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan", "window"]
+    },
+    {
+      "task_id": "P010",
+      "category": "room_scene",
+      "user_command": "餐厅准备吃饭，灯光明亮一点，温度不要太高",
+      "current_room_id": "dining_room",
+      "expected_intent": "lighting_comfort_control",
+      "expected_room": "dining_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P011",
+      "category": "room_scene",
+      "user_command": "厨房做饭时有点热，保持照明并通风",
+      "current_room_id": "kitchen",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "kitchen",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "window", "fan"]
+    },
+    {
+      "task_id": "P012",
+      "category": "room_scene",
+      "user_command": "晚上在客厅休息，帮我弄成柔和舒适的状态",
+      "current_room_id": "living_room",
+      "environment": {"weather": "cloudy", "time_hour": 21},
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P013",
+      "category": "whole_home_control",
+      "user_command": "打开所有灯光",
+      "expected_intent": "basic_light_control",
+      "expected_room": "all_rooms",
+      "expected_scope": "all_rooms",
+      "expected_devices": ["light"]
+    },
+    {
+      "task_id": "P014",
+      "category": "whole_home_control",
+      "user_command": "把家里所有窗帘都打开",
+      "expected_intent": "basic_curtain_control",
+      "expected_room": "all_rooms",
+      "expected_scope": "all_rooms",
+      "expected_devices": ["curtain"]
+    },
+    {
+      "task_id": "P015",
+      "category": "whole_home_control",
+      "user_command": "所有空调打开，调到舒适温度",
+      "expected_intent": "basic_ac_control",
+      "expected_room": "all_rooms",
+      "expected_scope": "all_rooms",
+      "expected_devices": ["ac"]
+    },
+    {
+      "task_id": "P016",
+      "category": "whole_home_control",
+      "user_command": "关闭全部房间的空调和风扇",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "all_rooms",
+      "expected_scope": "all_rooms",
+      "expected_devices": ["ac", "fan"]
+    },
+    {
+      "task_id": "P017",
+      "category": "whole_home_control",
+      "user_command": "我要出门了，家里进入离家模式",
+      "expected_intent": "away_mode",
+      "expected_room": "all_rooms",
+      "expected_scope": "all_rooms",
+      "expected_devices": ["light", "curtain", "ac", "fan", "window"]
+    },
+    {
+      "task_id": "P018",
+      "category": "whole_home_control",
+      "user_command": "全屋进入节能模式，优先减少不必要能耗",
+      "expected_intent": "energy_saving_mode",
+      "expected_room": "all_rooms",
+      "expected_scope": "all_rooms",
+      "expected_devices": ["light", "curtain", "ac", "fan", "window"]
+    },
+    {
+      "task_id": "P019",
+      "category": "environment_comfort",
+      "user_command": "客厅太热了，帮我降到舒服一点",
+      "current_room_id": "living_room",
+      "environment": {"weather": "sunny", "time_hour": 14},
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["curtain", "ac", "fan", "window"]
+    },
+    {
+      "task_id": "P020",
+      "category": "environment_comfort",
+      "user_command": "书房太暗了，适合阅读就行",
+      "current_room_id": "study_room",
+      "environment": {"weather": "overcast", "time_hour": 17},
+      "expected_intent": "study_mode",
+      "expected_room": "study_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain"]
+    },
+    {
+      "task_id": "P021",
+      "category": "environment_comfort",
+      "user_command": "卫生间太潮了，帮我降低湿度",
+      "current_room_id": "bathroom",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "bathroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["window", "ac"]
+    },
+    {
+      "task_id": "P022",
+      "category": "environment_comfort",
+      "user_command": "洗衣区有点潮，通风并保持舒适",
+      "current_room_id": "laundry",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "laundry",
+      "expected_scope": "single_room",
+      "expected_devices": ["window"]
+    },
+    {
+      "task_id": "P023",
+      "category": "environment_comfort",
+      "user_command": "餐厅有点冷，调到舒服一点",
+      "current_room_id": "dining_room",
+      "environment": {"weather": "rainy", "time_hour": 8},
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "dining_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["ac"]
+    },
+    {
+      "task_id": "P024",
+      "category": "environment_comfort",
+      "user_command": "客厅有点闷热，先通风再兼顾温度",
+      "current_room_id": "living_room",
+      "environment": {"weather": "cloudy", "time_hour": 16},
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["window", "fan", "ac"]
+    },
+    {
+      "task_id": "P025",
+      "category": "context_memory",
+      "pre_context_commands": [
+        {"user_command": "我现在在客厅", "current_room_id": "living_room"}
+      ],
+      "user_command": "这里太暗了，帮我打开灯",
+      "current_room_id": "living_room",
+      "expected_intent": "basic_light_control",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light"]
+    },
+    {
+      "task_id": "P026",
+      "category": "context_memory",
+      "pre_context_commands": [
+        {"user_command": "我现在在客厅", "current_room_id": "living_room"},
+        {"user_command": "我想保持观影模式", "current_room_id": "living_room"}
+      ],
+      "user_command": "我去书房了，也按刚才的偏好处理",
+      "current_room_id": "study_room",
+      "expected_intent": "movie_mode",
+      "expected_room": "study_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P027",
+      "category": "context_memory",
+      "pre_context_commands": [
+        {"user_command": "我今天有点感冒，怕风", "current_room_id": "bedroom"}
+      ],
+      "user_command": "卧室有点热，帮我降温但不要太冷",
+      "current_room_id": "bedroom",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "bedroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["ac", "fan"]
+    },
+    {
+      "task_id": "P028",
+      "category": "context_memory",
+      "pre_context_commands": [
+        {"user_command": "我在书房写报告", "current_room_id": "study_room"}
+      ],
+      "user_command": "继续保持适合写报告的环境",
+      "current_room_id": "study_room",
+      "expected_intent": "study_mode",
+      "expected_room": "study_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac"]
+    },
+    {
+      "task_id": "P029",
+      "category": "context_memory",
+      "pre_context_commands": [
+        {"user_command": "我现在在厨房", "current_room_id": "kitchen"}
+      ],
+      "user_command": "这里有点热，也要看得清楚",
+      "current_room_id": "kitchen",
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "kitchen",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "window", "fan"]
+    },
+    {
+      "task_id": "P030",
+      "category": "context_memory",
+      "pre_context_commands": [
+        {"user_command": "我刚才在卧室准备睡觉", "current_room_id": "bedroom"}
+      ],
+      "user_command": "帮我把光线降到最低，温度别太低",
+      "current_room_id": "bedroom",
+      "expected_intent": "sleep_mode",
+      "expected_room": "bedroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P031",
+      "category": "constraint_conflict",
+      "user_command": "在保证客厅舒服的情况下尽量省电",
+      "current_room_id": "living_room",
+      "expected_intent": "energy_saving_mode",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P032",
+      "category": "constraint_conflict",
+      "user_command": "卧室准备睡觉，不要太冷，也不要风扇直吹",
+      "current_room_id": "bedroom",
+      "expected_intent": "sleep_mode",
+      "expected_room": "bedroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P033",
+      "category": "constraint_conflict",
+      "user_command": "外面下雨但卫生间太潮，尽量通风除湿",
+      "current_room_id": "bathroom",
+      "environment": {"weather": "rainy", "time_hour": 20},
+      "expected_intent": "thermal_comfort_control",
+      "expected_room": "bathroom",
+      "expected_scope": "single_room",
+      "expected_devices": ["window", "ac"]
+    },
+    {
+      "task_id": "P034",
+      "category": "constraint_conflict",
+      "user_command": "书房太暗但下午太阳很晒，既要阅读也别太热",
+      "current_room_id": "study_room",
+      "environment": {"weather": "sunny", "time_hour": 15},
+      "expected_intent": "study_mode",
+      "expected_room": "study_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["light", "curtain", "ac", "fan"]
+    },
+    {
+      "task_id": "P035",
+      "category": "constraint_conflict",
+      "user_command": "我不在家，但窗帘不要全关，尽量减少热量进入",
+      "expected_intent": "away_mode",
+      "expected_room": "all_rooms",
+      "expected_scope": "all_rooms",
+      "expected_devices": ["light", "curtain", "ac", "fan", "window"]
+    },
+    {
+      "task_id": "P036",
+      "category": "constraint_conflict",
+      "user_command": "客厅有点热，不过先别开太低温空调，能省电就省电",
+      "current_room_id": "living_room",
+      "expected_intent": "energy_saving_mode",
+      "expected_room": "living_room",
+      "expected_scope": "single_room",
+      "expected_devices": ["curtain", "ac", "fan", "window"]
+    }
+  ]
+}

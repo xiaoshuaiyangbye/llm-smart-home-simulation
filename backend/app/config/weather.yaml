@@ -1,0 +1,7 @@
+outdoor_environment:
+  weather: cloudy
+  time_hour: 12
+  outdoor_illuminance_lux: 48000
+  solar_radiation_w_m2: 540
+  outdoor_temperature_c: 19
+  outdoor_humidity_percent: 64
