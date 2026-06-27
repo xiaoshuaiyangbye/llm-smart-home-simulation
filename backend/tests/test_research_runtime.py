@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 from app.agents.structured_agents import (
     CRITIC_DECISION_ADAPTER,
@@ -91,3 +92,27 @@ def test_world_removes_wall_clock_weather_metadata(tmp_path: Path) -> None:
     result = engine.tick([])
 
     assert result["state"]["outdoor_environment"]["data_updated_at"] == "deterministic-step-5"
+
+
+def test_agent_log_records_are_reproducible(tmp_path: Path) -> None:
+    semantic = {
+        "intent": "basic_light_control",
+        "room": "living_room",
+        "control_goal": "turn_on",
+        "targets": {"illuminance_lux_range": [300, 700], "temperature_c_range": [22, 27]},
+    }
+    log_a = tmp_path / "a.jsonl"
+    log_b = tmp_path / "b.jsonl"
+    config = SimulationConfig(seed=21, tick_minutes=5, log_run_id="same-run")
+
+    engine_a = SimulationEngine(config=config, log_path=log_a)
+    engine_b = SimulationEngine(config=config, log_path=log_b)
+    engine_a.reset()
+    engine_b.reset()
+    engine_a.run_agent_step(semantic)
+    engine_b.run_agent_step(semantic)
+
+    records_a = [json.loads(line) for line in log_a.read_text(encoding="utf-8").splitlines()]
+    records_b = [json.loads(line) for line in log_b.read_text(encoding="utf-8").splitlines()]
+
+    assert records_a == records_b

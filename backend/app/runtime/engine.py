@@ -125,6 +125,9 @@ class SimulationEngine:
 
     def plan(self, semantic_result: dict[str, Any]) -> PlannerDecision:
         decision = self.planner_agent.plan(semantic_result, self.world.snapshot())
+        decision = decision.model_copy(
+            update={"plan_id": f"plan-seed-{self.config.seed}-tick-{self.tick_index}"}
+        )
         self.logger.write("agent_planned", self.tick_index, decision.model_dump())
         self.event_bus.publish(Event("agent_planned", self.tick_index, decision.model_dump()))
         return decision
