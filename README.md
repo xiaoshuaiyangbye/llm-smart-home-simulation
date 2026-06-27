@@ -96,6 +96,12 @@ python scripts\verify_real_llm.py
 
 ## Useful Scripts
 
+Run the deterministic research-runtime demo:
+
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\run_research_demo.py
+```
+
 Run a small batch experiment:
 
 ```powershell
@@ -179,3 +185,7 @@ python scripts\run_batch_experiments.py --limit 5 --disable-multi-agent
 ## Notes
 
 This project is intended for software simulation, prototyping, and reproducible experiments. The environment, energy, lighting, humidity, and comfort models are simplified approximations and should not be used as real building design, inspection, or home automation logic.
+
+## Research Runtime
+
+The repository now includes a deterministic, event-driven simulation runtime under `backend/app/runtime`, with modular `world`, `tools`, `memory`, and schema-validated structured agents. See `docs/research_runtime_architecture.md` for the architecture diagram, replay contract, and demo flow.
