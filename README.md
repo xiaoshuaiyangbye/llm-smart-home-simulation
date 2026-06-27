@@ -189,3 +189,9 @@ This project is intended for software simulation, prototyping, and reproducible 
 ## Research Runtime
 
 The repository now includes a deterministic, event-driven simulation runtime under `backend/app/runtime`, with modular `world`, `tools`, `memory`, and schema-validated structured agents. See `docs/research_runtime_architecture.md` for the architecture diagram, replay contract, and demo flow.
+
+Research API endpoints:
+
+- `POST /api/research/run`
+- `GET /api/research/logs`
+- `POST /api/research/replay`

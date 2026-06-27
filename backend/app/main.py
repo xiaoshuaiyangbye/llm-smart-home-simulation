@@ -5,8 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from app.config.simulation import SimulationConfig
 from app.experiments.logger import ExperimentLogger
 from app.experiments.task_runner import TaskRunner
+from app.memory.replay_log import ReplayLogIndex
+from app.runtime.engine import SimulationEngine
+from app.runtime.replay import ReplayEngine
 from app.schemas.action_schema import DeviceActionRequest, DeviceActionResponse
 from app.schemas.state_schema import ComfortState, DeviceState, EnergyState, RoomState, SmartHomeState, WeatherType
 from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse, RagQueryRequest, TaskRequest, TaskResponse
@@ -33,6 +37,7 @@ app.add_middleware(
 
 environment = SmartHomeEnvironment()
 experiment_logger = ExperimentLogger(LOG_DIR)
+replay_log_index = ReplayLogIndex(LOG_DIR)
 task_runner = TaskRunner(environment=environment, experiment_logger=experiment_logger)
 life_simulation = LifeSimulationService(
     environment=environment,
@@ -48,6 +53,29 @@ class SimulationStepRequest(BaseModel):
 class EnvironmentUpdateRequest(BaseModel):
     weather: WeatherType | None = None
     time_hour: int | None = Field(default=None, ge=0, le=23)
+
+
+class ResearchRunRequest(BaseModel):
+    seed: int = 42
+    tick_minutes: int = Field(default=5, ge=1, le=1440)
+    run_id: str = Field(default="research-api", min_length=1, max_length=80)
+    semantic_result: dict = Field(
+        default_factory=lambda: {
+            "intent": "study_mode",
+            "room": "study_room",
+            "scope": "single_room",
+            "control_goal": "set_target",
+            "targets": {
+                "illuminance_lux_range": [500, 750],
+                "temperature_c_range": [24, 26],
+            },
+            "devices": ["light", "ac", "curtain"],
+        }
+    )
+
+
+class ResearchReplayRequest(BaseModel):
+    log_file: str = Field(default="research_api.jsonl", min_length=1)
 
 
 @app.get("/health")
@@ -140,6 +168,52 @@ def step_simulation(request: SimulationStepRequest) -> SmartHomeState:
     return state
 
 
+@app.post("/api/research/run")
+def run_research_simulation(request: ResearchRunRequest) -> dict:
+    log_name = _safe_jsonl_name(request.run_id)
+    log_path = LOG_DIR / log_name
+    engine = SimulationEngine(
+        config=SimulationConfig(
+            seed=request.seed,
+            tick_minutes=request.tick_minutes,
+            log_run_id=request.run_id,
+        ),
+        log_path=log_path,
+    )
+    engine.reset()
+    result = engine.run_agent_step(request.semantic_result, minutes=request.tick_minutes)
+    return {
+        "success": True,
+        "log_file": log_name,
+        "log_path": str(log_path),
+        "planner": result["planner"],
+        "executor": result["executor"],
+        "critic": result["critic"],
+        "after_hash": result["tick"]["after_hash"],
+        "diff": result["tick"]["diff"],
+    }
+
+
+@app.get("/api/research/logs")
+def list_research_logs() -> dict[str, list[str]]:
+    return {"files": replay_log_index.list_runs()}
+
+
+@app.post("/api/research/replay")
+def replay_research_log(request: ResearchReplayRequest) -> dict:
+    log_path = (LOG_DIR / request.log_file).resolve()
+    if LOG_DIR.resolve() not in log_path.parents or log_path.suffix != ".jsonl":
+        raise HTTPException(status_code=400, detail="Invalid research log path.")
+    if not log_path.exists():
+        raise HTTPException(status_code=404, detail="Research log not found.")
+    result = ReplayEngine().replay(log_path)
+    return {
+        "matched": result.matched,
+        "checked_ticks": result.checked_ticks,
+        "mismatches": result.mismatches,
+    }
+
+
 @app.post("/api/life-simulation/start", response_model=LifeSimulationStatus)
 def start_life_simulation(request: LifeSimulationStartRequest) -> LifeSimulationStatus:
     try:
@@ -204,3 +278,8 @@ def export_latest_log():
         media_type="text/csv",
         filename=log_path.name,
     )
+
+
+def _safe_jsonl_name(run_id: str) -> str:
+    safe = "".join(char if char.isalnum() or char in {"-", "_"} else "_" for char in run_id)
+    return f"{safe or 'research-api'}.jsonl"
