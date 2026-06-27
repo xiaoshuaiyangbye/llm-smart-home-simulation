@@ -11,13 +11,17 @@ class SmartHomeWorld:
         self.environment = environment or SmartHomeEnvironment()
 
     def reset(self) -> SmartHomeState:
-        return self.environment.reset(refresh_realtime=False)
+        return self._normalize_deterministic_metadata(
+            self.environment.reset(refresh_realtime=False)
+        )
 
     def snapshot(self) -> SmartHomeState:
         return self.environment.get_state(refresh_realtime=False)
 
     def step(self, minutes: int) -> SmartHomeState:
-        return self.environment.step(minutes=minutes, refresh_realtime=False)
+        return self._normalize_deterministic_metadata(
+            self.environment.step(minutes=minutes, refresh_realtime=False)
+        )
 
     def apply_device_action(
         self,
@@ -31,3 +35,10 @@ class SmartHomeWorld:
             parameters=parameters or {},
         )
 
+    def _normalize_deterministic_metadata(self, state: SmartHomeState) -> SmartHomeState:
+        environment = state.outdoor_environment.model_copy(
+            update={"data_updated_at": f"deterministic-step-{state.current_time_step}"}
+        )
+        next_state = state.model_copy(update={"outdoor_environment": environment})
+        self.environment._state = next_state
+        return next_state

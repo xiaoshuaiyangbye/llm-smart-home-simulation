@@ -82,3 +82,12 @@ def test_replay_matches_recorded_run(tmp_path: Path) -> None:
 
     assert result.matched is True
     assert result.checked_ticks == 1
+
+
+def test_world_removes_wall_clock_weather_metadata(tmp_path: Path) -> None:
+    log_path = tmp_path / "clock.jsonl"
+    engine = SimulationEngine(config=SimulationConfig(seed=13, tick_minutes=5), log_path=log_path)
+    engine.reset()
+    result = engine.tick([])
+
+    assert result["state"]["outdoor_environment"]["data_updated_at"] == "deterministic-step-5"

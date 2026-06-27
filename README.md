@@ -102,6 +102,12 @@ Run the deterministic research-runtime demo:
 .\backend\.venv\Scripts\python.exe scripts\run_research_demo.py
 ```
 
+Replay a research JSONL log:
+
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\replay_research_log.py data\logs\research_demo.jsonl
+```
+
 Run a small batch experiment:
 
 ```powershell

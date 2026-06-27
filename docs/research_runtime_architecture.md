@@ -31,6 +31,12 @@ flowchart LR
 
 The demo writes `data/logs/research_demo.jsonl`, executes a structured agent step, advances one tick, and verifies deterministic replay.
 
+Replay any compatible JSONL log:
+
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\replay_research_log.py data\logs\research_demo.jsonl
+```
+
 ## API
 
 - `POST /api/research/run`: run one deterministic structured-agent tick and write a JSONL log.
