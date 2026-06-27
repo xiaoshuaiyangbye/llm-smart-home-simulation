@@ -111,6 +111,7 @@ export async function submitTask(userCommand: string, currentRoomId?: string): P
       execution_result: response.execution_result,
       feedback_result: response.feedback_result,
       actions: Array.isArray(response.plan_result.actions) ? response.plan_result.actions : [],
+      multi_agent_blackboard: response.multi_agent_blackboard,
     },
     state: response.final_state,
     error: null,

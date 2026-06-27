@@ -31,5 +31,11 @@ class AgentCommandResponse(BaseModel):
     plan_result: dict[str, Any] = Field(default_factory=dict)
     execution_result: dict[str, Any] = Field(default_factory=dict)
     feedback_result: dict[str, Any] = Field(default_factory=dict)
+    multi_agent_blackboard: dict[str, Any] = Field(default_factory=dict)
     final_state: SmartHomeState | None = None
     error: str | None = None
+
+
+class RagQueryRequest(BaseModel):
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=20)

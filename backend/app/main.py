@@ -9,7 +9,7 @@ from app.experiments.logger import ExperimentLogger
 from app.experiments.task_runner import TaskRunner
 from app.schemas.action_schema import DeviceActionRequest, DeviceActionResponse
 from app.schemas.state_schema import ComfortState, DeviceState, EnergyState, RoomState, SmartHomeState, WeatherType
-from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse, TaskRequest, TaskResponse
+from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse, RagQueryRequest, TaskRequest, TaskResponse
 from app.simulation.environment import SmartHomeEnvironment
 from app.simulation.life_simulation import (
     LifeSimulationService,
@@ -93,6 +93,21 @@ def get_context_memory() -> dict:
 @app.post("/api/context/memory/reset")
 def reset_context_memory() -> dict:
     return task_runner.reset_context_memory()
+
+
+@app.get("/api/rag/sources")
+def get_rag_sources() -> dict:
+    return task_runner.get_rag_sources()
+
+
+@app.post("/api/rag/reindex")
+def reindex_rag() -> dict:
+    return task_runner.reindex_rag()
+
+
+@app.post("/api/rag/query")
+def query_rag(request: RagQueryRequest) -> dict:
+    return task_runner.query_rag(request.query, request.top_k)
 
 
 @app.post("/api/state/reset", response_model=SmartHomeState)

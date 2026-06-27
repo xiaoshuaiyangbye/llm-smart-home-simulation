@@ -2,13 +2,20 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
+from app.agents.blackboard import MultiAgentBlackboard
+from app.agents.comfort_agent import ComfortAgent
 from app.agents.context_memory import UserContextMemory
+from app.agents.critic_agent import CriticAgent
+from app.agents.energy_agent import EnergyAgent
 from app.agents.execution_agent import ExecutionAgent
 from app.agents.feedback_agent import FeedbackAgent
+from app.agents.knowledge_agent import KnowledgeAgent
 from app.agents.llm_client import LLMClient, is_location_update_command
 from app.agents.planning_agent import PlanningAgent
+from app.agents.safety_agent import SafetyAgent
 from app.agents.semantic_agent import SemanticAgent
 from app.experiments.logger import ExperimentLogger
+from app.rag import RagDocumentStore
 from app.schemas.action_schema import AgentOutput
 from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse, TaskRequest, TaskResponse
 from app.simulation.environment import SmartHomeEnvironment
@@ -42,25 +49,43 @@ class TaskRunner:
         refresh_realtime: bool = True,
         enable_feedback_correction: bool = True,
         enable_context_memory: bool = True,
+        enable_multi_agent_review: bool = True,
         execute_actions: bool = True,
+        rag_store: RagDocumentStore | None = None,
     ) -> None:
         llm_client = LLMClient()
         self.environment = environment
         self.experiment_logger = experiment_logger
+        self.rag_store = rag_store or RagDocumentStore()
         self.semantic_agent = SemanticAgent(llm_client)
+        self.knowledge_agent = KnowledgeAgent(self.rag_store)
+        self.comfort_agent = ComfortAgent()
+        self.energy_agent = EnergyAgent()
         self.planning_agent = PlanningAgent()
+        self.safety_agent = SafetyAgent()
+        self.critic_agent = CriticAgent()
         self.execution_agent = ExecutionAgent()
         self.feedback_agent = FeedbackAgent()
         self.context_memory = UserContextMemory()
         self.refresh_realtime = refresh_realtime
         self.enable_feedback_correction = enable_feedback_correction
         self.enable_context_memory = enable_context_memory
+        self.enable_multi_agent_review = enable_multi_agent_review
         self.execute_actions = execute_actions
         self._last_follow_me_semantic: dict[str, Any] | None = None
 
     def run_agent_command(self, request: AgentCommandRequest) -> AgentCommandResponse:
         try:
+            blackboard = MultiAgentBlackboard(request.user_command)
             current_state = self.environment.get_state(refresh_realtime=self.refresh_realtime)
+            blackboard.add_stage(
+                "orchestrator",
+                {
+                    "event": "state_loaded",
+                    "room_count": len(current_state.rooms),
+                    "device_count": len(current_state.devices),
+                },
+            )
             previous_occupied_rooms = []
             if request.current_room_id:
                 previous_occupied_rooms = [
@@ -76,6 +101,21 @@ class TaskRunner:
                 if self.enable_context_memory
                 else {}
             )
+            blackboard.add_stage("context_agent", memory_context if self.enable_context_memory else {"enabled": False})
+            knowledge_result = (
+                self.knowledge_agent.retrieve(request.user_command, current_state, memory_context)
+                if self.enable_multi_agent_review
+                else {
+                    "agent": "knowledge_agent",
+                    "rag_context": {"matches": [], "match_count": 0},
+                    "used_sources": [],
+                    "guidance": [],
+                }
+            )
+            blackboard.add_stage("knowledge_agent", knowledge_result)
+            if self.enable_context_memory and isinstance(memory_context, dict):
+                memory_context["rag_context"] = knowledge_result.get("rag_context", {})
+                memory_context["rag_guidance"] = knowledge_result.get("guidance", [])
 
             if self.enable_context_memory and memory_context.get("context_update_only"):
                 semantic_result = self._build_context_update_semantic(
@@ -98,6 +138,9 @@ class TaskRunner:
                 )
             if semantic_result.get("error"):
                 raise RuntimeError(str(semantic_result["error"]))
+            semantic_result["rag_context"] = knowledge_result.get("rag_context", {})
+            semantic_result["rag_guidance"] = knowledge_result.get("guidance", [])
+            blackboard.add_stage("semantic_agent", self._compact_for_blackboard(semantic_result))
 
             if self.enable_context_memory:
                 self._attach_memory_context(semantic_result, memory_context)
@@ -106,10 +149,56 @@ class TaskRunner:
                 request.current_room_id,
                 previous_occupied_rooms,
             )
+            comfort_result = (
+                self.comfort_agent.analyze(semantic_result, current_state)
+                if self.enable_multi_agent_review
+                else {"agent": "comfort_agent", "enabled": False}
+            )
+            energy_result = (
+                self.energy_agent.analyze(semantic_result, current_state)
+                if self.enable_multi_agent_review
+                else {"agent": "energy_agent", "enabled": False}
+            )
+            blackboard.add_stage("comfort_agent", comfort_result)
+            blackboard.add_stage("energy_agent", energy_result)
             plan_result = self.planning_agent.plan(
                 semantic_result,
                 current_state,
             )
+            blackboard.add_stage("planning_agent", plan_result)
+            safety_result = (
+                self.safety_agent.review(semantic_result, plan_result, knowledge_result)
+                if self.enable_multi_agent_review
+                else {
+                    "agent": "safety_agent",
+                    "passed": True,
+                    "issues": [],
+                    "actions": plan_result.get("actions", []),
+                }
+            )
+            if self.enable_multi_agent_review:
+                plan_result["actions"] = safety_result.get("actions", plan_result.get("actions", []))
+            critic_result = (
+                self.critic_agent.review(
+                    semantic_result,
+                    plan_result,
+                    safety_result,
+                    comfort_result,
+                    energy_result,
+                    knowledge_result,
+                )
+                if self.enable_multi_agent_review
+                else {"agent": "critic_agent", "approved": True, "enabled": False}
+            )
+            plan_result["multi_agent_context"] = {
+                "knowledge_result": knowledge_result,
+                "comfort_result": comfort_result,
+                "energy_result": energy_result,
+                "safety_result": safety_result,
+                "critic_result": critic_result,
+            }
+            blackboard.add_stage("safety_agent", safety_result)
+            blackboard.add_stage("critic_agent", critic_result)
             if self.execute_actions:
                 execution_result = self.execution_agent.execute(plan_result, self.environment)
                 feedback_result = self.feedback_agent.evaluate(
@@ -157,14 +246,27 @@ class TaskRunner:
                     self.environment.get_state(refresh_realtime=False),
                     revision_round=correction_round,
                 )
+            blackboard.add_stage("execution_agent", self._compact_for_blackboard(execution_result))
+            blackboard.add_stage("feedback_agent", feedback_result)
 
             final_state = self.environment.get_state(refresh_realtime=False)
+            blackboard.set_metric("final_action_count", len(plan_result.get("actions", [])))
+            blackboard.set_metric("feedback_completed", feedback_result.get("completed"))
+            blackboard_snapshot = blackboard.snapshot()
+            semantic_result["multi_agent_blackboard"] = deepcopy(blackboard_snapshot)
+            plan_result["multi_agent_blackboard"] = deepcopy(blackboard_snapshot)
+            feedback_result["multi_agent_blackboard_summary"] = {
+                "stage_count": len(blackboard_snapshot.get("stages", [])),
+                "warnings": blackboard_snapshot.get("warnings", []),
+                "metrics": blackboard_snapshot.get("metrics", {}),
+            }
             agent_output = AgentOutput(
                 semantic_result=semantic_result,
                 planning_result=plan_result,
                 execution_result=execution_result,
                 feedback_result=feedback_result,
                 actions=plan_result.get("actions", []),
+                multi_agent_blackboard=deepcopy(blackboard_snapshot),
             )
             self.experiment_logger.log_task(
                 experiment_id="agent-command",
@@ -181,6 +283,7 @@ class TaskRunner:
                 execution_result=execution_result,
                 feedback_result=feedback_result,
                 final_state=final_state,
+                multi_agent_blackboard=deepcopy(blackboard_snapshot),
             )
         except Exception as exc:
             return AgentCommandResponse(
@@ -197,6 +300,7 @@ class TaskRunner:
             execution_result=response.execution_result,
             feedback_result=response.feedback_result,
             actions=response.plan_result.get("actions", []),
+            multi_agent_blackboard=response.multi_agent_blackboard,
         )
         return TaskResponse(
             experiment_id=request.experiment_id,
@@ -217,6 +321,15 @@ class TaskRunner:
     def reset_context_memory(self) -> dict[str, Any]:
         self._last_follow_me_semantic = None
         return self.context_memory.reset()
+
+    def query_rag(self, query: str, top_k: int = 5) -> dict[str, Any]:
+        return self.rag_store.query(query, top_k=top_k)
+
+    def reindex_rag(self) -> dict[str, Any]:
+        return self.rag_store.reindex()
+
+    def get_rag_sources(self) -> dict[str, Any]:
+        return self.rag_store.sources()
 
     def _build_context_update_semantic(
         self,
@@ -361,3 +474,9 @@ class TaskRunner:
             if room.occupancy:
                 return room.room_id
         return "living_room"
+
+    def _compact_for_blackboard(self, payload: dict[str, Any]) -> dict[str, Any]:
+        compact = dict(payload)
+        for key in ["prompt_template", "prompt_payload_summary", "multi_agent_blackboard"]:
+            compact.pop(key, None)
+        return compact

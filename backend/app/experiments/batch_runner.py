@@ -26,11 +26,16 @@ def run_batch_experiment(
     output_dir: Path,
     reset_between_tasks: bool = True,
     limit: int | None = None,
+    enable_multi_agent_review: bool = True,
 ) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     environment = SmartHomeEnvironment()
     logger = ExperimentLogger(output_dir)
-    runner = TaskRunner(environment=environment, experiment_logger=logger)
+    runner = TaskRunner(
+        environment=environment,
+        experiment_logger=logger,
+        enable_multi_agent_review=enable_multi_agent_review,
+    )
     tasks = load_batch_tasks(tasks_path)
     if limit is not None:
         tasks = tasks[: max(0, limit)]
@@ -46,6 +51,12 @@ def run_batch_experiment(
         response_time_ms = (time.perf_counter() - started_at) * 1000
 
         semantic = response.semantic_result or {}
+        plan = response.plan_result or {}
+        multi_agent_context = plan.get("multi_agent_context", {}) if isinstance(plan.get("multi_agent_context"), dict) else {}
+        knowledge_result = multi_agent_context.get("knowledge_result", {}) if isinstance(multi_agent_context.get("knowledge_result"), dict) else {}
+        safety_result = multi_agent_context.get("safety_result", {}) if isinstance(multi_agent_context.get("safety_result"), dict) else {}
+        critic_result = multi_agent_context.get("critic_result", {}) if isinstance(multi_agent_context.get("critic_result"), dict) else {}
+        rag_context = knowledge_result.get("rag_context", {}) if isinstance(knowledge_result.get("rag_context"), dict) else {}
         feedback = response.feedback_result or {}
         final_state = response.final_state or environment.get_state(refresh_realtime=False)
         expected_intent = task.get("expected_intent")
@@ -72,7 +83,12 @@ def run_batch_experiment(
             "expected_scope": expected_scope,
             "predicted_scope": predicted_scope,
             "scope_correct": predicted_scope == expected_scope if expected_scope else "",
-            "action_count": len(response.plan_result.get("actions", [])) if response.plan_result else 0,
+            "action_count": len(plan.get("actions", [])) if plan else 0,
+            "multi_agent_enabled": enable_multi_agent_review,
+            "rag_match_count": rag_context.get("match_count", 0),
+            "safety_issue_count": len(safety_result.get("issues", [])) if isinstance(safety_result.get("issues"), list) else 0,
+            "critic_approved": critic_result.get("approved", ""),
+            "critic_needs_revision": critic_result.get("needs_revision", ""),
             "response_time_ms": round(response_time_ms, 2),
             "current_power_w": final_state.energy_metrics.current_power_w,
             "baseline_power_w": final_state.energy_metrics.baseline_power_w,
@@ -95,6 +111,7 @@ def run_batch_experiment(
             "generated_at": datetime.now().isoformat(timespec="seconds"),
             "reset_between_tasks": reset_between_tasks,
             "task_limit": limit,
+            "multi_agent_enabled": enable_multi_agent_review,
         }
     )
     with summary_path.open("w", encoding="utf-8") as file:

@@ -35,6 +35,11 @@ def main() -> int:
         default=None,
         help="Run only the first N tasks for smoke tests.",
     )
+    parser.add_argument(
+        "--disable-multi-agent",
+        action="store_true",
+        help="Run the older semantic-planning-execution-feedback path without RAG review agents.",
+    )
     args = parser.parse_args()
 
     load_dotenv(BACKEND_ROOT / ".env")
@@ -43,6 +48,7 @@ def main() -> int:
         output_dir=Path(args.output_dir),
         reset_between_tasks=not args.keep_state,
         limit=args.limit,
+        enable_multi_agent_review=not args.disable_multi_agent,
     )
     print(json.dumps(result["summary"], ensure_ascii=False, indent=2))
     print(f"\nCSV: {result['csv_path']}")

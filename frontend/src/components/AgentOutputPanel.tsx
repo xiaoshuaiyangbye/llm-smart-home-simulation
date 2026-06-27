@@ -10,15 +10,27 @@ interface AgentOutputPanelProps {
   isLoading: boolean;
 }
 
-type InspectorTab = "prompt" | "memory" | "semantic" | "planning" | "actions" | "feedback";
+type InspectorTab =
+  | "prompt"
+  | "memory"
+  | "semantic"
+  | "planning"
+  | "rag"
+  | "agents"
+  | "safety"
+  | "actions"
+  | "feedback";
 
 const TAB_LABELS: Record<InspectorTab, string> = {
-  prompt: "提示词模板",
-  memory: "上下文记忆",
-  semantic: "语义理解",
-  planning: "任务规划",
-  actions: "执行动作",
-  feedback: "反馈判断",
+  prompt: "Prompt",
+  memory: "Memory",
+  semantic: "Semantic",
+  planning: "Planning",
+  rag: "RAG",
+  agents: "Agents",
+  safety: "Safety",
+  actions: "Actions",
+  feedback: "Feedback",
 };
 
 export function AgentOutputPanel({
@@ -33,6 +45,15 @@ export function AgentOutputPanel({
   const planning = asRecord(output?.planning_result);
   const execution = asRecord(output?.execution_result);
   const feedback = asRecord(output?.feedback_result);
+  const multiAgentContext = asRecord(planning.multi_agent_context);
+  const knowledgeResult = asRecord(multiAgentContext.knowledge_result);
+  const safetyReview = asRecord(multiAgentContext.safety_result);
+  const blackboard =
+    output?.multi_agent_blackboard ??
+    semantic.multi_agent_blackboard ??
+    planning.multi_agent_blackboard ??
+    { status: "waiting" };
+  const ragContext = semantic.rag_context ?? knowledgeResult.rag_context ?? { status: "waiting" };
   const llmMetrics = asRecord(semantic.llm_metrics);
   const promptTemplate = semantic.prompt_template ?? { status: "waiting" };
   const promptPayload = semantic.prompt_payload_summary ?? { status: "waiting" };
@@ -42,11 +63,17 @@ export function AgentOutputPanel({
     delete rest.prompt_template;
     delete rest.prompt_payload_summary;
     delete rest.memory_context;
+    delete rest.multi_agent_blackboard;
     return Object.keys(rest).length > 0 ? rest : { status: "waiting" };
   }, [semantic]);
   const completed = Boolean(feedback.completed);
   const actions = Array.isArray(output?.actions) ? output.actions : [];
   const executedCount = Number(execution.executed_count ?? 0);
+  const ragRecord = asRecord(ragContext);
+  const ragMatchesValue = ragRecord.matches;
+  const safetyIssuesValue = safetyReview.issues;
+  const ragMatches = Array.isArray(ragMatchesValue) ? ragMatchesValue.length : 0;
+  const safetyIssues = Array.isArray(safetyIssuesValue) ? safetyIssuesValue.length : 0;
   const canSubmit = command.trim().length > 0 && !isLoading;
 
   const inspectorValue = useMemo(() => {
@@ -59,9 +86,23 @@ export function AgentOutputPanel({
     if (activeTab === "memory") return memoryContext;
     if (activeTab === "semantic") return semanticForDisplay;
     if (activeTab === "planning") return output?.planning_result ?? { status: "waiting" };
+    if (activeTab === "rag") return ragContext;
+    if (activeTab === "agents") return blackboard;
+    if (activeTab === "safety") return Object.keys(safetyReview).length > 0 ? safetyReview : { status: "waiting" };
     if (activeTab === "actions") return actions;
     return output?.feedback_result ?? { status: "waiting" };
-  }, [activeTab, actions, memoryContext, output, promptPayload, promptTemplate, semanticForDisplay]);
+  }, [
+    activeTab,
+    actions,
+    blackboard,
+    memoryContext,
+    output,
+    promptPayload,
+    promptTemplate,
+    ragContext,
+    safetyReview,
+    semanticForDisplay,
+  ]);
 
   function handleCommandKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
@@ -76,7 +117,7 @@ export function AgentOutputPanel({
   return (
     <section className="agent-dock">
       <div className="command-box">
-        <label htmlFor="command">自然语言指令</label>
+        <label htmlFor="command">Natural language command</label>
         <textarea
           id="command"
           rows={5}
@@ -85,56 +126,71 @@ export function AgentOutputPanel({
           onKeyDown={handleCommandKeyDown}
         />
         <button type="button" disabled={!canSubmit} onClick={onSubmit}>
-          {isLoading ? "执行中..." : "提交任务"}
+          {isLoading ? "Running..." : "Submit task"}
         </button>
       </div>
 
       <div className="agent-process-panel">
         <div className="process-header">
-          <h2>大语言模型智能体流程</h2>
+          <h2>LLM multi-agent workflow</h2>
           <span>{formatLlmStatus(semantic.llm_mode, llmMetrics)}</span>
         </div>
         <div className="agent-flow">
           <FlowNode
-            label="感知"
+            label="Perceive"
             active={Boolean(output)}
-            detail={output ? `读取 ${String(getNested(promptPayload, "room_count") ?? "-")} 个房间与 ${String(getNested(promptPayload, "device_count") ?? "-")} 个虚拟设备状态` : "等待任务"}
+            detail={
+              output
+                ? `${String(getNested(promptPayload, "room_count") ?? "-")} rooms / ${String(
+                    getNested(promptPayload, "device_count") ?? "-",
+                  )} devices`
+                : "waiting"
+            }
           />
           <FlowNode
-            label="提示词"
-            active={Boolean(semantic.prompt_template)}
-            detail={semantic.prompt_template ? "自动注入平台、户型、设备和 JSON 输出约束" : "等待生成"}
+            label="RAG"
+            active={ragMatches > 0}
+            detail={ragMatches > 0 ? `${ragMatches} chunks retrieved` : "waiting"}
           />
           <FlowNode
-            label="记忆"
+            label="Memory"
             active={Boolean(semantic.memory_context)}
-            detail={semantic.memory_context ? String(getNested(memoryContext, "day_summary") ?? "已读取当天上下文") : "等待上下文"}
+            detail={semantic.memory_context ? String(getNested(memoryContext, "day_summary") ?? "context loaded") : "waiting"}
           />
           <FlowNode
-            label="理解"
+            label="Intent"
             active={Boolean(semantic.intent)}
-            detail={semantic.intent ? `${String(semantic.intent)} / ${String(semantic.room)} / ${String(semantic.control_goal ?? "set_target")}` : "等待语义解析"}
+            detail={
+              semantic.intent
+                ? `${String(semantic.intent)} / ${String(semantic.room)} / ${String(semantic.control_goal ?? "set_target")}`
+                : "waiting"
+            }
           />
           <FlowNode
-            label="规划"
+            label="Plan"
             active={actions.length > 0}
-            detail={actions.length > 0 ? `生成 ${actions.length} 个设备动作` : "等待动作序列"}
+            detail={actions.length > 0 ? `${actions.length} device actions` : "waiting"}
           />
           <FlowNode
-            label="执行"
+            label="Safety"
+            active={Object.keys(safetyReview).length > 0}
+            detail={safetyIssues > 0 ? `${safetyIssues} findings` : Object.keys(safetyReview).length > 0 ? "passed" : "waiting"}
+          />
+          <FlowNode
+            label="Execute"
             active={executedCount > 0}
-            detail={executedCount > 0 ? `已联动 ${executedCount} 个虚拟设备` : "等待执行"}
+            detail={executedCount > 0 ? `${executedCount} actions executed` : "waiting"}
           />
           <FlowNode
-            label="反馈"
+            label="Feedback"
             active={Boolean(output?.feedback_result)}
-            detail={completed ? "目标达成" : output ? "需要继续修正或等待结果" : "等待闭环判断"}
+            detail={completed ? "target reached" : output ? "needs correction or convergence" : "waiting"}
           />
         </div>
       </div>
 
       <div className="agent-inspector">
-        <div className="inspector-tabs" role="tablist" aria-label="智能体输出检查器">
+        <div className="inspector-tabs" role="tablist" aria-label="Agent output inspector">
           {(Object.keys(TAB_LABELS) as InspectorTab[]).map((tab) => (
             <button
               key={tab}
@@ -148,7 +204,7 @@ export function AgentOutputPanel({
         </div>
         <div className="inspector-title">
           <h3>{TAB_LABELS[activeTab]} JSON</h3>
-          {activeTab === "actions" && <span>{actions.length} 个动作</span>}
+          {activeTab === "actions" && <span>{actions.length} actions</span>}
         </div>
         <pre>{JSON.stringify(inspectorValue, null, 2)}</pre>
       </div>
@@ -183,5 +239,5 @@ function formatLlmStatus(mode: unknown, metrics: Record<string, unknown>): strin
   if (typeof requestMs === "number") parts.push(`${(requestMs / 1000).toFixed(1)}s`);
   if (stream === true) parts.push("stream");
   if (cacheHit === true) parts.push("cache");
-  return parts.join(" · ");
+  return parts.join(" / ");
 }

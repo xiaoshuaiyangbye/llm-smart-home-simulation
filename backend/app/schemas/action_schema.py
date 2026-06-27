@@ -19,6 +19,7 @@ class AgentOutput(BaseModel):
     execution_result: dict[str, Any]
     feedback_result: dict[str, Any]
     actions: list[Any]
+    multi_agent_blackboard: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlannedDeviceAction(BaseModel):

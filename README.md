@@ -9,6 +9,7 @@ The project does not control real home devices. It provides a reproducible softw
 - Backend: Python + FastAPI for state management, virtual device control, environment simulation, agent orchestration, and CSV log export.
 - Frontend: React + TypeScript + Vite + `@react-three/fiber` for a 3D smart-home control panel.
 - Agent flow: semantic parsing, task planning, action execution, feedback evaluation, and up to 3 correction rounds.
+- Multi-agent RAG flow: local knowledge retrieval, comfort analysis, energy review, safety review, critic review, execution, and feedback are written to an inspectable blackboard.
 - LLM mode: supports `mock` mode for deterministic local testing and `real` mode for an OpenAI-compatible chat completion endpoint.
 - Experiments: includes reusable batch tasks, reproduction experiments, life simulation scripts, and summary/report generation.
 - Safety: `.env`, runtime folders, dependency folders, build output, logs, and generated results are excluded from Git.
@@ -126,8 +127,54 @@ Generated logs and reports are written under `data/logs/` and `data/results/`, w
 - `GET /health`: backend health check.
 - `GET /api/state`: current smart-home state.
 - `POST /api/agent/command`: run the semantic-planning-execution-feedback flow for a natural-language command.
+- `GET /api/rag/sources`: list indexed local RAG sources.
+- `POST /api/rag/reindex`: rebuild the local RAG index.
+- `POST /api/rag/query`: retrieve local knowledge chunks for a query.
 - `POST /api/reset`: reset the simulation state.
 - `GET /api/logs/export`: export CSV logs.
+
+## Multi-Agent + RAG Upgrade
+
+The default command path now keeps the original API shape while adding a richer
+multi-agent blackboard:
+
+```text
+user command
+-> context memory
+-> KnowledgeAgent local RAG retrieval
+-> SemanticAgent intent parsing
+-> ComfortAgent state review
+-> EnergyAgent waste review
+-> PlanningAgent action generation
+-> SafetyAgent action guardrails
+-> CriticAgent plan review
+-> ExecutionAgent virtual device execution
+-> FeedbackAgent closed-loop evaluation
+```
+
+RAG sources currently include `docs/*.md`, `backend/app/config/*.yaml`, and
+`data/tasks/*.json`. The built-in retriever uses deterministic local lexical
+vectors so the project runs without a separate vector database. You can later
+replace `backend/app/rag/document_store.py` with FAISS, Chroma, or a local
+embedding model while keeping the same `query()` interface.
+
+Run a RAG smoke query:
+
+```powershell
+python scripts\inspect_rag.py "sleep mode comfort energy safety" --top-k 5
+```
+
+Run baseline vs multi-agent RAG ablation:
+
+```powershell
+python scripts\run_multi_agent_rag_experiments.py --limit 5
+```
+
+Disable the upgraded review path for a batch run:
+
+```powershell
+python scripts\run_batch_experiments.py --limit 5 --disable-multi-agent
+```
 
 ## Notes
 

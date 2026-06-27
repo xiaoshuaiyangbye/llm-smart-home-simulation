@@ -172,6 +172,7 @@ export interface AgentOutput {
   execution_result: Record<string, unknown>;
   feedback_result: Record<string, unknown>;
   actions: AgentAction[];
+  multi_agent_blackboard?: Record<string, unknown>;
 }
 
 export interface TaskResponse {
@@ -189,6 +190,7 @@ export interface AgentCommandResponse {
   plan_result: Record<string, unknown>;
   execution_result: Record<string, unknown>;
   feedback_result: Record<string, unknown>;
+  multi_agent_blackboard: Record<string, unknown>;
   final_state: SmartHomeState | null;
   error: string | null;
 }

@@ -264,13 +264,32 @@ export default function App() {
 
   return (
     <main className={`app-shell${isScreenshotMode ? " screenshot-mode" : ""}`}>
-      <header>
-        <div>
-          <p className="eyebrow">LLM Smart Home Simulation</p>
-          <h1>{sceneTitle}</h1>
+      <header className="topbar">
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">⌂</span>
+          <strong>智能家居仿真实验平台</strong>
         </div>
-        <span className="status-pill">{llmModeLabel}</span>
+        <div className="topbar-meta" aria-label="simulation status">
+          <span>{state?.outdoor_environment.weather ?? "cloudy"}</span>
+          <span>{state ? `${state.outdoor_environment.outdoor_temperature_c.toFixed(0)}°C` : "--"}</span>
+          <span>{state ? `${state.outdoor_environment.time_hour}:00:00` : "--"}</span>
+        </div>
+        <div className="topbar-actions">
+          <span className="status-pill">{llmModeLabel}</span>
+          <span className="avatar-dot" aria-hidden="true" />
+        </div>
       </header>
+      <section className="workspace-panel">
+        <div className="workspace-heading">
+          <div className="breadcrumb-line">
+            <span>实验场景</span>
+            <i aria-hidden="true" />
+            <h1>{sceneTitle}</h1>
+            <span className={isLifeSimulationActive ? "live-badge active" : "live-badge"}>
+              {isLifeSimulationActive ? "运行中" : "待启动"}
+            </span>
+          </div>
+        </div>
       <div className="dashboard">
         <section className="scene-panel">
           <HouseScene
@@ -279,6 +298,18 @@ export default function App() {
             currentRoomId={sceneCurrentRoomId}
             avatarVisible={showAvatar}
           />
+          <button className="scene-fullscreen" type="button" aria-label="fullscreen">全屏</button>
+          <div className="scene-rail" aria-hidden="true">
+            <span>测温</span>
+            <span>设备</span>
+            <span>结构</span>
+          </div>
+          <div className="scene-toolbar" aria-hidden="true">
+            <span>视角控制</span>
+            <span>鸟瞰</span>
+            <span>漫游</span>
+            <span>复位</span>
+          </div>
           <div className="movement-hint">
             {isLifeSimulationActive ? `生活仿真：${sceneCurrentRoomName}` : `W/A/S/D 移动“我”：当前在 ${currentRoomName}`}
           </div>
@@ -310,6 +341,7 @@ export default function App() {
         output={agentOutput}
         isLoading={isLoading || isLifeSimulationActive}
       />
+      </section>
     </main>
   );
 }
