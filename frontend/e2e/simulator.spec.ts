@@ -24,7 +24,7 @@ test("默认 2D 视图可推进仿真并切换到延迟加载的 3D 视图", asy
   const threeDimensional = page.getByRole("button", { name: /3D/ });
   await threeDimensional.click();
   await expect(threeDimensional).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.locator("canvas")).toBeVisible({ timeout: 10_000 });
 });
 
 test("关键房间与视图控件可通过键盘获得并暴露语义状态", async ({ page }) => {

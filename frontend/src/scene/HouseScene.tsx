@@ -1,6 +1,6 @@
-import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { OrbitControls as ThreeOrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { useEffect, useMemo, useState } from "react";
 
 import type { RoomId, SmartHomeState, WeatherType } from "../types/state";
 import { HomeScene2D } from "./HomeScene2D";
@@ -73,23 +73,48 @@ export function HouseScene({
             onSelect={setSelection}
           />
         )}
-        {!is2D && <ContactShadows position={[floorPlanBounds.center[0], -0.17, floorPlanBounds.center[1]]} opacity={0.32} scale={14.5} blur={2.6} far={8.5} />}
-        <OrbitControls
-          enableDamping
-          makeDefault
-          enableRotate={!is2D}
-          enablePan
-          enableZoom
-          minZoom={is2D ? 46 : 28}
-          maxZoom={is2D ? 112 : 80}
-          minPolarAngle={is2D ? 0 : Math.PI / 9}
-          maxPolarAngle={is2D ? 0 : Math.PI / 2.35}
-          target={target}
-        />
+        {!is2D && <GroundShadow />}
+        <SceneControls is2D={is2D} target={target} />
       </Canvas>
       {selection && <div className="scene-selection-card">{selection}</div>}
     </>
   );
+}
+
+function GroundShadow() {
+  return (
+    <mesh position={[floorPlanBounds.center[0], -0.165, floorPlanBounds.center[1]]} rotation={[-Math.PI / 2, 0, 0]} scale={[7.3, 4.2, 1]}>
+      <circleGeometry args={[1, 48]} />
+      <meshBasicMaterial color="#74695b" transparent opacity={0.12} depthWrite={false} />
+    </mesh>
+  );
+}
+
+function SceneControls({ is2D, target }: { is2D: boolean; target: [number, number, number] }) {
+  const { camera, gl, invalidate } = useThree();
+  const controls = useMemo(() => new ThreeOrbitControls(camera, gl.domElement), [camera, gl]);
+
+  useEffect(() => {
+    controls.enableDamping = true;
+    controls.enableRotate = !is2D;
+    controls.enablePan = true;
+    controls.enableZoom = true;
+    controls.minZoom = is2D ? 46 : 28;
+    controls.maxZoom = is2D ? 112 : 80;
+    controls.minPolarAngle = is2D ? 0 : Math.PI / 9;
+    controls.maxPolarAngle = is2D ? 0 : Math.PI / 2.35;
+    controls.target.set(...target);
+    const onChange = () => invalidate();
+    controls.addEventListener("change", onChange);
+    controls.update();
+    return () => {
+      controls.removeEventListener("change", onChange);
+      controls.dispose();
+    };
+  }, [controls, invalidate, is2D, target]);
+
+  useFrame(() => controls.update());
+  return null;
 }
 
 function SceneLighting({ weather, flat }: { weather: WeatherType; flat: boolean }) {

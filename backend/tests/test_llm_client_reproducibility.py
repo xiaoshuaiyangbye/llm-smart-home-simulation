@@ -41,6 +41,7 @@ def test_real_client_sends_explicit_reproducible_decoding_controls(monkeypatch) 
     assert isinstance(payload, dict)
     assert payload["temperature"] == 0.0
     assert payload["seed"] == 1729
+    assert payload["reasoning_effort"] == "none"
     assert client.model_revision == "sha256:immutable-local-model"
 
 
@@ -77,4 +78,5 @@ def test_local_ollama_empty_openai_response_uses_explicit_native_fallback(monkey
     assert len(requests) == 2
     native_payload = json.loads(requests[1].data.decode("utf-8"))
     assert native_payload["stream"] is False
+    assert native_payload["think"] is False
     assert native_payload["options"]["seed"] == 42

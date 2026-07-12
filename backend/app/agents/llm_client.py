@@ -711,6 +711,7 @@ class RealLLMClient:
                 "temperature": self.temperature,
                 "seed": self.seed,
                 "transport": "cache",
+                "thinking_disabled": self._is_local_ollama(),
             }
             return semantic_result
         if cache_key in self._semantic_cache:
@@ -723,6 +724,7 @@ class RealLLMClient:
                 "temperature": self.temperature,
                 "seed": self.seed,
                 "transport": "cache",
+                "thinking_disabled": self._is_local_ollama(),
             }
             return cached
 
@@ -737,6 +739,7 @@ class RealLLMClient:
             "attempts": 0,
             "retried": False,
             "transport": "openai_compatible",
+            "thinking_disabled": self._is_local_ollama(),
         }
         last_error = ""
         last_content = ""
@@ -817,6 +820,11 @@ class RealLLMClient:
         }
         if self.resource_id:
             headers["lora_id"] = self.resource_id
+        if self._is_local_ollama():
+            # Qwen3 can otherwise consume its generation budget in hidden
+            # reasoning and return an empty assistant content field. Ollama's
+            # OpenAI-compatible endpoint documents "none" for this control.
+            payload["reasoning_effort"] = "none"
 
         request = Request(
             f"{self.base_url}/chat/completions",
@@ -855,6 +863,7 @@ class RealLLMClient:
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "think": False,
             "options": {"temperature": self.temperature, "seed": self.seed, "num_predict": self.max_tokens},
         }
         request = Request(
