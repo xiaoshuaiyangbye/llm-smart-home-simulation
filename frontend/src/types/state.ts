@@ -242,3 +242,42 @@ export interface LifeSimulationStatus {
   output_paths: Record<string, string>;
   state: SmartHomeState;
 }
+
+export interface AgentHealth {
+  success: boolean;
+  llm_mode: "mock" | "real" | string;
+  error?: string | null;
+}
+
+export interface AuthStatus {
+  requires_auth: boolean;
+}
+
+export interface ObjectiveWeights {
+  comfort: number;
+  energy: number;
+  safety: number;
+  stability: number;
+}
+
+export interface UserPreferenceProfile {
+  profile_id: string;
+  display_name: string;
+  preferred_temperature_c: number;
+  temperature_tolerance_c: number;
+  preferred_illuminance_lux: number;
+  preferred_humidity_percent: number;
+  energy_saving_preference: number;
+  objective_weights: ObjectiveWeights;
+  feedback_count: number;
+  satisfaction_ema: number;
+  updated_at: string;
+}
+
+export interface RobustnessConfig {
+  enabled: boolean;
+  seed: number;
+  temperature_sensor_noise_c: number;
+  illuminance_sensor_noise_lux: number;
+  actuator_failure_probability: number;
+}

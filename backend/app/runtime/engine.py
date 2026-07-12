@@ -109,11 +109,22 @@ class SimulationEngine:
         semantic_result: dict[str, Any],
         minutes: int | None = None,
     ) -> dict[str, Any]:
+        # Persist the structured input before planning so a replay can verify
+        # the semantic-to-plan boundary, rather than merely re-applying the
+        # actions that happened to be logged afterwards.
+        semantic_payload = {
+            "semantic_result": semantic_result,
+            "semantic_input_sha256": stable_state_hash(semantic_result),
+        }
+        self.logger.write("agent_semantic_input", self.tick_index, semantic_payload)
+        self.event_bus.publish(Event("agent_semantic_input", self.tick_index, semantic_payload))
         planner = self.plan(semantic_result)
         tick_result = self.tick(planner.tool_calls, minutes=minutes)
         executor = self.executor_agent.summarize(planner, tick_result["tool_results"])
         critic = self.critic_agent.review(planner, executor)
         payload = {
+            "semantic_input_sha256": semantic_payload["semantic_input_sha256"],
+            "planner_sha256": stable_state_hash(planner.model_dump(mode="json")),
             "planner": planner.model_dump(),
             "executor": executor.model_dump(),
             "critic": critic.model_dump(),

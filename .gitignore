@@ -8,6 +8,7 @@ dist/
 .vite/
 .runtime/
 *.log
+deploy/backend.env
 data/logs/*
 data/results/*
 !data/logs/.gitkeep

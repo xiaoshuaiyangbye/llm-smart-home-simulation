@@ -22,15 +22,15 @@ type InspectorTab =
   | "feedback";
 
 const TAB_LABELS: Record<InspectorTab, string> = {
-  prompt: "Prompt",
-  memory: "Memory",
-  semantic: "Semantic",
-  planning: "Planning",
+  prompt: "提示词",
+  memory: "记忆",
+  semantic: "语义",
+  planning: "规划",
   rag: "RAG",
-  agents: "Agents",
-  safety: "Safety",
-  actions: "Actions",
-  feedback: "Feedback",
+  agents: "协同",
+  safety: "安全",
+  actions: "动作",
+  feedback: "反馈",
 };
 
 export function AgentOutputPanel({
@@ -117,74 +117,75 @@ export function AgentOutputPanel({
   return (
     <section className="agent-dock">
       <div className="command-box">
-        <label htmlFor="command">Natural language command</label>
+        <label htmlFor="command">指令输入</label>
         <textarea
           id="command"
           rows={5}
           value={command}
           onChange={(event) => onCommandChange(event.target.value)}
           onKeyDown={handleCommandKeyDown}
+          placeholder="请输入自然语言指令，例如：晚上7点，打开客厅灯和空调，温度设置为24度"
         />
         <button type="button" disabled={!canSubmit} onClick={onSubmit}>
-          {isLoading ? "Running..." : "Submit task"}
+          {isLoading ? "执行中..." : "发送指令"}
         </button>
       </div>
 
       <div className="agent-process-panel">
         <div className="process-header">
-          <h2>LLM multi-agent workflow</h2>
+          <h2>大语言模型智能体流程</h2>
           <span>{formatLlmStatus(semantic.llm_mode, llmMetrics)}</span>
         </div>
         <div className="agent-flow">
           <FlowNode
-            label="Perceive"
+            label="感知"
             active={Boolean(output)}
             detail={
               output
                 ? `${String(getNested(promptPayload, "room_count") ?? "-")} rooms / ${String(
                     getNested(promptPayload, "device_count") ?? "-",
                   )} devices`
-                : "waiting"
+                : "等待输入"
             }
           />
           <FlowNode
             label="RAG"
             active={ragMatches > 0}
-            detail={ragMatches > 0 ? `${ragMatches} chunks retrieved` : "waiting"}
+            detail={ragMatches > 0 ? `检索 ${ragMatches} 段知识` : "等待检索"}
           />
           <FlowNode
-            label="Memory"
+            label="记忆"
             active={Boolean(semantic.memory_context)}
-            detail={semantic.memory_context ? String(getNested(memoryContext, "day_summary") ?? "context loaded") : "waiting"}
+            detail={semantic.memory_context ? String(getNested(memoryContext, "day_summary") ?? "上下文已载入") : "等待上下文"}
           />
           <FlowNode
-            label="Intent"
+            label="意图"
             active={Boolean(semantic.intent)}
             detail={
               semantic.intent
                 ? `${String(semantic.intent)} / ${String(semantic.room)} / ${String(semantic.control_goal ?? "set_target")}`
-                : "waiting"
+                : "等待识别"
             }
           />
           <FlowNode
-            label="Plan"
+            label="规划"
             active={actions.length > 0}
-            detail={actions.length > 0 ? `${actions.length} device actions` : "waiting"}
+            detail={actions.length > 0 ? `${actions.length} 个设备动作` : "等待规划"}
           />
           <FlowNode
-            label="Safety"
+            label="安全"
             active={Object.keys(safetyReview).length > 0}
-            detail={safetyIssues > 0 ? `${safetyIssues} findings` : Object.keys(safetyReview).length > 0 ? "passed" : "waiting"}
+            detail={safetyIssues > 0 ? `${safetyIssues} 个风险` : Object.keys(safetyReview).length > 0 ? "已通过" : "等待检查"}
           />
           <FlowNode
-            label="Execute"
+            label="执行"
             active={executedCount > 0}
-            detail={executedCount > 0 ? `${executedCount} actions executed` : "waiting"}
+            detail={executedCount > 0 ? `已执行 ${executedCount} 个动作` : "等待执行"}
           />
           <FlowNode
-            label="Feedback"
+            label="反馈"
             active={Boolean(output?.feedback_result)}
-            detail={completed ? "target reached" : output ? "needs correction or convergence" : "waiting"}
+            detail={completed ? "目标已达成" : output ? "等待修正或收敛" : "等待反馈"}
           />
         </div>
       </div>
@@ -204,7 +205,7 @@ export function AgentOutputPanel({
         </div>
         <div className="inspector-title">
           <h3>{TAB_LABELS[activeTab]} JSON</h3>
-          {activeTab === "actions" && <span>{actions.length} actions</span>}
+          {activeTab === "actions" && <span>{actions.length} 个动作</span>}
         </div>
         <pre>{JSON.stringify(inspectorValue, null, 2)}</pre>
       </div>
@@ -231,7 +232,7 @@ function getNested(value: unknown, key: string): unknown {
 }
 
 function formatLlmStatus(mode: unknown, metrics: Record<string, unknown>): string {
-  if (!mode) return "waiting";
+  if (!mode) return "等待中";
   const requestMs = metrics.request_ms;
   const stream = metrics.stream;
   const cacheHit = metrics.cache_hit;

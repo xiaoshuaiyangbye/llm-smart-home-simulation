@@ -8,6 +8,7 @@ import type {
   SmartHomeState,
   WeatherType,
 } from "../types/state";
+import { DebouncedRange } from "./DebouncedRange";
 
 interface ControlPanelProps {
   state: SmartHomeState | null;
@@ -112,13 +113,13 @@ function RoomControl({
           <button disabled={disabled} onClick={() => onDeviceAction({ entity_id: light.entity_id, action: light.is_on ? "turn_off" : "turn_on", parameters: { brightness_pct: light.brightness_pct || 80 } })}>
             {light.is_on ? "关闭" : "开启"}
           </button>
-          <input
-            type="range"
+          <DebouncedRange
+            ariaLabel={`${ROOM_LABELS[roomId]} 灯光亮度`}
             min={0}
             max={100}
             value={light.brightness_pct}
             disabled={disabled}
-            onChange={(event) => onDeviceAction({ entity_id: light.entity_id, action: "set_brightness", parameters: { brightness_pct: Number(event.target.value) } })}
+            onCommit={(brightness_pct) => onDeviceAction({ entity_id: light.entity_id, action: "set_brightness", parameters: { brightness_pct } })}
           />
         </div>
       )}
@@ -127,13 +128,13 @@ function RoomControl({
           <span>窗帘</span>
           <button disabled={disabled} onClick={() => onDeviceAction({ entity_id: curtain.entity_id, action: "open", parameters: {} })}>打开</button>
           <button disabled={disabled} onClick={() => onDeviceAction({ entity_id: curtain.entity_id, action: "close", parameters: {} })}>关闭</button>
-          <input
-            type="range"
+          <DebouncedRange
+            ariaLabel={`${ROOM_LABELS[roomId]} 窗帘开合`}
             min={0}
             max={100}
             value={curtain.opening_pct}
             disabled={disabled}
-            onChange={(event) => onDeviceAction({ entity_id: curtain.entity_id, action: "set_opening", parameters: { opening_pct: Number(event.target.value) } })}
+            onCommit={(opening_pct) => onDeviceAction({ entity_id: curtain.entity_id, action: "set_opening", parameters: { opening_pct } })}
           />
         </div>
       )}
@@ -159,13 +160,13 @@ function RoomControl({
           <button disabled={disabled} onClick={() => onDeviceAction({ entity_id: fan.entity_id, action: fan.is_on ? "turn_off" : "turn_on", parameters: { speed_pct: fan.speed_pct || 60 } })}>
             {fan.is_on ? "关闭" : "开启"}
           </button>
-          <input
-            type="range"
+          <DebouncedRange
+            ariaLabel={`${ROOM_LABELS[roomId]} 风扇风速`}
             min={0}
             max={100}
             value={fan.speed_pct}
             disabled={disabled}
-            onChange={(event) => onDeviceAction({ entity_id: fan.entity_id, action: "set_speed", parameters: { speed_pct: Number(event.target.value) } })}
+            onCommit={(speed_pct) => onDeviceAction({ entity_id: fan.entity_id, action: "set_speed", parameters: { speed_pct } })}
           />
         </div>
       )}

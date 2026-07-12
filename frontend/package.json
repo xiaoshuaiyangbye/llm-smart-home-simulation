@@ -6,21 +6,27 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
     "build": "tsc && vite build",
+    "test": "vitest run",
+    "test:bundle": "npm run build && node scripts/verify-2d-bundle.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@react-three/fiber": "^8.17.10",
     "@react-three/drei": "^9.120.4",
-    "three": "^0.171.0",
+    "@react-three/fiber": "^8.17.10",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "^0.171.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/three": "^0.171.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^29.1.1",
     "typescript": "^5.7.2",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^4.1.10"
   }
 }

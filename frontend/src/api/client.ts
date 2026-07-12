@@ -2,21 +2,63 @@ import type {
   DeviceActionRequest,
   DeviceActionResponse,
   AgentCommandResponse,
+  AgentHealth,
+  AuthStatus,
   EnergyState,
   LifeSimulationDuration,
   LifeSimulationStatus,
   SmartHomeState,
   TaskResponse,
   WeatherType,
+  RobustnessConfig,
+  UserPreferenceProfile,
 } from "../types/state";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
+const REQUEST_TIMEOUT_MS = 20_000;
+const SESSION_STORAGE_KEY = "smart-home-simulation-session";
+
+function getSessionId(): string {
+  const stored = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  if (stored) return stored;
+  const sessionId = crypto.randomUUID().replace(/-/g, "");
+  window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  return sessionId;
+}
 
 async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...(options?.headers ?? {}) },
-    ...options,
-  });
+  const canRetry = !options?.method || options.method === "GET";
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < (canRetry ? 2 : 1); attempt += 1) {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        signal: controller.signal,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Simulation-Session": getSessionId(),
+          ...(options?.headers ?? {}),
+        },
+      });
+      break;
+    } catch (error) {
+      if (attempt + 1 < (canRetry ? 2 : 1)) {
+        await new Promise((resolve) => window.setTimeout(resolve, 250));
+        continue;
+      }
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new Error("请求超时，请检查后端或模型服务后重试。");
+      }
+      throw new Error("网络连接失败，请检查后端服务后重试。");
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  if (!response) throw new Error("网络连接失败，请检查后端服务后重试。");
   if (!response.ok) {
     let detail = `Request failed: ${path}`;
     try {
@@ -27,6 +69,7 @@ async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
     }
     throw new Error(detail);
   }
+  if (response.status === 204) return undefined as T;
   return response.json();
 }
 
@@ -70,6 +113,55 @@ export function backToToday(): Promise<SmartHomeState> {
 
 export function fetchLifeSimulationStatus(): Promise<LifeSimulationStatus> {
   return requestJson<LifeSimulationStatus>("/api/life-simulation/status");
+}
+
+export function fetchAgentHealth(): Promise<AgentHealth> {
+  return requestJson<AgentHealth>("/api/agent/health");
+}
+
+export function fetchAuthStatus(): Promise<AuthStatus> {
+  return requestJson<AuthStatus>("/api/auth/status");
+}
+
+export function createAuthSession(accessToken: string): Promise<void> {
+  return requestJson<void>("/api/auth/session", {
+    method: "POST",
+    body: JSON.stringify({ access_token: accessToken }),
+  });
+}
+
+export function fetchResearchProfile(): Promise<UserPreferenceProfile> {
+  return requestJson<UserPreferenceProfile>("/api/research/profile");
+}
+
+export function updateResearchProfile(payload: Partial<UserPreferenceProfile>): Promise<UserPreferenceProfile> {
+  return requestJson<UserPreferenceProfile>("/api/research/profile", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function submitResearchFeedback(payload: {
+  satisfaction: number;
+  desired_temperature_c?: number;
+  desired_illuminance_lux?: number;
+  note?: string;
+}): Promise<UserPreferenceProfile> {
+  return requestJson<UserPreferenceProfile>("/api/research/profile/feedback", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchRobustnessConfig(): Promise<RobustnessConfig> {
+  return requestJson<RobustnessConfig>("/api/research/robustness");
+}
+
+export function updateRobustnessConfig(payload: RobustnessConfig): Promise<RobustnessConfig> {
+  return requestJson<RobustnessConfig>("/api/research/robustness", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function updateEnvironment(

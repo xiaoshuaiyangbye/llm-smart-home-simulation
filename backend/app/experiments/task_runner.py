@@ -16,6 +16,7 @@ from app.agents.safety_agent import SafetyAgent
 from app.agents.semantic_agent import SemanticAgent
 from app.experiments.logger import ExperimentLogger
 from app.rag import RagDocumentStore
+from app.research import RobustnessConfig, UserPreferenceService
 from app.schemas.action_schema import AgentOutput
 from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse, TaskRequest, TaskResponse
 from app.simulation.environment import SmartHomeEnvironment
@@ -52,6 +53,7 @@ class TaskRunner:
         enable_multi_agent_review: bool = True,
         execute_actions: bool = True,
         rag_store: RagDocumentStore | None = None,
+        experiment_safety_fault: dict[str, Any] | None = None,
     ) -> None:
         llm_client = LLMClient()
         self.environment = environment
@@ -72,9 +74,18 @@ class TaskRunner:
         self.enable_context_memory = enable_context_memory
         self.enable_multi_agent_review = enable_multi_agent_review
         self.execute_actions = execute_actions
+        # This hook is intentionally constructor-only: it is a deterministic
+        # experiment fixture, not an API surface for normal home control.
+        self.experiment_safety_fault = deepcopy(experiment_safety_fault) if experiment_safety_fault else None
         self._last_follow_me_semantic: dict[str, Any] | None = None
 
-    def run_agent_command(self, request: AgentCommandRequest) -> AgentCommandResponse:
+    def run_agent_command(
+        self,
+        request: AgentCommandRequest,
+        preference_service: UserPreferenceService | None = None,
+        evaluation_preference_service: UserPreferenceService | None = None,
+        robustness_config: RobustnessConfig | None = None,
+    ) -> AgentCommandResponse:
         try:
             blackboard = MultiAgentBlackboard(request.user_command)
             current_state = self.environment.get_state(refresh_realtime=self.refresh_realtime)
@@ -140,7 +151,15 @@ class TaskRunner:
                 raise RuntimeError(str(semantic_result["error"]))
             semantic_result["rag_context"] = knowledge_result.get("rag_context", {})
             semantic_result["rag_guidance"] = knowledge_result.get("guidance", [])
+            if preference_service:
+                semantic_result = preference_service.personalize_semantic_result(semantic_result)
+            decision_state, robustness_observation = UserPreferenceService.observe(
+                current_state,
+                robustness_config or RobustnessConfig(),
+            )
+            semantic_result["robustness_observation"] = robustness_observation
             blackboard.add_stage("semantic_agent", self._compact_for_blackboard(semantic_result))
+            blackboard.add_stage("robustness_observation", robustness_observation)
 
             if self.enable_context_memory:
                 self._attach_memory_context(semantic_result, memory_context)
@@ -150,12 +169,12 @@ class TaskRunner:
                 previous_occupied_rooms,
             )
             comfort_result = (
-                self.comfort_agent.analyze(semantic_result, current_state)
+                self.comfort_agent.analyze(semantic_result, decision_state)
                 if self.enable_multi_agent_review
                 else {"agent": "comfort_agent", "enabled": False}
             )
             energy_result = (
-                self.energy_agent.analyze(semantic_result, current_state)
+                self.energy_agent.analyze(semantic_result, decision_state)
                 if self.enable_multi_agent_review
                 else {"agent": "energy_agent", "enabled": False}
             )
@@ -163,21 +182,28 @@ class TaskRunner:
             blackboard.add_stage("energy_agent", energy_result)
             plan_result = self.planning_agent.plan(
                 semantic_result,
-                current_state,
+                decision_state,
             )
+            if self.experiment_safety_fault:
+                plan_result = self._inject_experiment_safety_fault(plan_result)
             blackboard.add_stage("planning_agent", plan_result)
             safety_result = (
                 self.safety_agent.review(semantic_result, plan_result, knowledge_result)
                 if self.enable_multi_agent_review
-                else {
-                    "agent": "safety_agent",
-                    "passed": True,
-                    "issues": [],
-                    "actions": plan_result.get("actions", []),
-                }
+                else self._assess_without_safety_intervention(semantic_result, plan_result)
             )
             if self.enable_multi_agent_review:
                 plan_result["actions"] = safety_result.get("actions", plan_result.get("actions", []))
+            retained_actions, simulated_failures = UserPreferenceService.filter_failed_actions(
+                plan_result.get("actions", []),
+                robustness_config or RobustnessConfig(),
+                current_state.current_time_step,
+            )
+            plan_result["actions"] = retained_actions
+            plan_result["robustness_context"] = {
+                "observation": robustness_observation,
+                "simulated_actuator_failures": simulated_failures,
+            }
             critic_result = (
                 self.critic_agent.review(
                     semantic_result,
@@ -250,6 +276,21 @@ class TaskRunner:
             blackboard.add_stage("feedback_agent", feedback_result)
 
             final_state = self.environment.get_state(refresh_realtime=False)
+            objective_evaluator = evaluation_preference_service or preference_service
+            if objective_evaluator:
+                multi_objective = objective_evaluator.evaluate_multi_objective(
+                    final_state,
+                    action_count=len(plan_result.get("actions", [])),
+                    safety_passed=bool(safety_result.get("passed", True)),
+                    safety_issues=(
+                        safety_result.get("remaining_issues", [])
+                        if isinstance(safety_result.get("remaining_issues", []), list)
+                        else []
+                    ),
+                )
+                plan_result["multi_objective_evaluation"] = multi_objective
+                feedback_result["multi_objective_evaluation"] = multi_objective
+                blackboard.add_stage("personalization_evaluator", multi_objective)
             blackboard.set_metric("final_action_count", len(plan_result.get("actions", [])))
             blackboard.set_metric("feedback_completed", feedback_result.get("completed"))
             blackboard_snapshot = blackboard.snapshot()
@@ -450,6 +491,80 @@ class TaskRunner:
             if isinstance(recommended_range, list) and len(recommended_range) == 2:
                 targets = semantic_result.setdefault("targets", {})
                 targets["temperature_c_range"] = recommended_range
+
+    def _inject_experiment_safety_fault(self, plan_result: dict[str, Any]) -> dict[str, Any]:
+        """Inject one named unsafe actuator action immediately before review.
+
+        The personalization ablation uses this only to verify that the safety
+        agent can intercept an otherwise valid planner output.  Keeping the
+        fixture narrow and recorded prevents it from becoming an untraceable
+        alternative control policy.
+        """
+        fault = self.experiment_safety_fault or {}
+        fault_type = str(fault.get("type", ""))
+        if fault_type not in {"unsafe_window_opening", "unsafe_fan_speed"}:
+            raise ValueError(f"Unsupported experiment safety fault: {fault.get('type')}")
+        entity_id = str(fault.get("entity_id", ""))
+        expected_device_type = "window" if fault_type == "unsafe_window_opening" else "fan"
+        if not entity_id.startswith(f"{expected_device_type}."):
+            raise ValueError(f"{fault_type} requires a {expected_device_type} entity_id")
+
+        if fault_type == "unsafe_window_opening":
+            action = "set_opening"
+            parameters = {"opening_pct": float(fault.get("opening_pct", 100))}
+        else:
+            action = "set_speed"
+            parameters = {"speed_pct": float(fault.get("speed_pct", 100))}
+
+        injected_action = {
+            "entity_id": entity_id,
+            "action": action,
+            "parameters": parameters,
+            "reason": f"deterministic experiment fault: {fault_type} before safety review",
+        }
+        actions = list(plan_result.get("actions", []))
+        replaced_existing_action = False
+        for index, action in enumerate(actions):
+            if action.get("entity_id") == entity_id:
+                actions[index] = injected_action
+                replaced_existing_action = True
+                break
+        if not replaced_existing_action:
+            actions.append(injected_action)
+        return {
+            **plan_result,
+            "actions": actions,
+            "experiment_safety_fault": {
+                "id": str(fault.get("id", "unnamed_safety_fault")),
+                "type": fault_type,
+                "entity_id": entity_id,
+                **injected_action["parameters"],
+                "replaced_existing_action": replaced_existing_action,
+            },
+        }
+
+    def _assess_without_safety_intervention(
+        self,
+        semantic_result: dict[str, Any],
+        plan_result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Expose baseline safety risk without granting it reviewer intervention."""
+        actions = list(plan_result.get("actions", []))
+        assessment = self.safety_agent.assess(semantic_result, actions)
+        issues = assessment["issues"]
+        return {
+            "agent": "safety_agent",
+            "enabled": False,
+            "passed": not any(issue["severity"] == "high" for issue in issues),
+            "issues": issues,
+            "remaining_issues": issues,
+            "unsafe_action_detected": bool(issues),
+            "unsafe_action_blocked": False,
+            "action_count_before": len(actions),
+            "action_count_after": len(actions),
+            "actions_changed": False,
+            "actions": actions,
+        }
 
     def _attach_room_context(
         self,

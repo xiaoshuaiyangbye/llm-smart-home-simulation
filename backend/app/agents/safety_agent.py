@@ -11,6 +11,42 @@ class SafetyAgent:
         knowledge_result: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         actions = plan_result.get("actions", [])
+        assessment = self.assess(semantic_result, actions)
+        issues = assessment["issues"]
+        blocked_entities = assessment["blocked_entities"]
+
+        reviewed_actions = [
+            self._block_action(action, "blocked by safety review")
+            if str(action.get("entity_id")) in blocked_entities
+            else action
+            for action in actions
+        ]
+        remaining_assessment = self.assess(semantic_result, reviewed_actions)
+        actions_changed = reviewed_actions != actions
+        return {
+            "agent": "safety_agent",
+            # ``passed`` denotes the safety of the final executable plan, not
+            # whether the reviewer encountered a problem before correcting it.
+            "passed": not any(issue["severity"] == "high" for issue in remaining_assessment["issues"]),
+            "issues": issues,
+            "remaining_issues": remaining_assessment["issues"],
+            "unsafe_action_detected": bool(issues),
+            "unsafe_action_blocked": bool(blocked_entities) and not any(
+                issue["severity"] == "high" for issue in remaining_assessment["issues"]
+            ),
+            "action_count_before": len(actions),
+            "action_count_after": len(reviewed_actions),
+            "actions_changed": actions_changed,
+            "actions": reviewed_actions,
+            "knowledge_sources": (knowledge_result or {}).get("used_sources", []),
+        }
+
+    def assess(self, semantic_result: dict[str, Any], actions: list[dict[str, Any]]) -> dict[str, Any]:
+        """Inspect a candidate plan without changing it.
+
+        Baselines use this to score the safety of their executable actions even
+        when the intervention branch is intentionally disabled.
+        """
         issues: list[dict[str, Any]] = []
         blocked_entities: set[str] = set()
 
@@ -23,6 +59,19 @@ class SafetyAgent:
                             "severity": "high",
                             "entity_id": action.get("entity_id"),
                             "message": "Window opening conflicts with active health or airflow constraints.",
+                        }
+                    )
+                    blocked_entities.add(str(action.get("entity_id")))
+
+        if constraints.get("avoid_strong_fan"):
+            fan_limit = float(constraints.get("fan_speed_limit_pct", 30))
+            for action in actions:
+                if _device_type(action) == "fan" and _fan_speed_pct(action) > fan_limit:
+                    issues.append(
+                        {
+                            "severity": "high",
+                            "entity_id": action.get("entity_id"),
+                            "message": "Fan speed conflicts with the active airflow-sensitivity constraint.",
                         }
                     )
                     blocked_entities.add(str(action.get("entity_id")))
@@ -40,20 +89,9 @@ class SafetyAgent:
                     }
                 )
 
-        reviewed_actions = [
-            self._block_action(action, "blocked by safety review")
-            if str(action.get("entity_id")) in blocked_entities
-            else action
-            for action in actions
-        ]
         return {
-            "agent": "safety_agent",
-            "passed": not any(issue["severity"] == "high" for issue in issues),
             "issues": issues,
-            "action_count_before": len(actions),
-            "action_count_after": len(reviewed_actions),
-            "actions": reviewed_actions,
-            "knowledge_sources": (knowledge_result or {}).get("used_sources", []),
+            "blocked_entities": blocked_entities,
         }
 
     def _block_action(self, action: dict[str, Any], reason: str) -> dict[str, Any]:
@@ -62,6 +100,9 @@ class SafetyAgent:
         if device_type == "window":
             blocked["action"] = "set_opening"
             blocked["parameters"] = {"opening_pct": 0}
+        elif device_type == "fan":
+            blocked["action"] = "set_speed"
+            blocked["parameters"] = {"speed_pct": 0}
         return blocked
 
 
@@ -84,6 +125,13 @@ def _opening_pct(action: dict[str, Any]) -> float:
     parameters = action.get("parameters", {})
     if isinstance(parameters, dict):
         return float(parameters.get("opening_pct", 0))
+    return 0.0
+
+
+def _fan_speed_pct(action: dict[str, Any]) -> float:
+    parameters = action.get("parameters", {})
+    if isinstance(parameters, dict):
+        return float(parameters.get("speed_pct", 0))
     return 0.0
 
 

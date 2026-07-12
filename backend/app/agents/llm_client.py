@@ -648,6 +648,13 @@ class RealLLMClient:
         self.max_tokens = int(os.getenv("REAL_LLM_MAX_TOKENS", "320"))
         self.max_retries = int(os.getenv("REAL_LLM_MAX_RETRIES", "2"))
         self.stream = os.getenv("REAL_LLM_STREAM", "true").lower() in {"1", "true", "yes", "on"}
+        # Keep real semantic runs reproducible when the endpoint supports OpenAI
+        # compatible decoding controls (including local Ollama).  The effective
+        # values are also retained in every semantic trace and experiment
+        # provenance record; a zero temperature alone does not identify the
+        # sampling stream.
+        self.temperature = float(os.getenv("REAL_LLM_TEMPERATURE", "0.0"))
+        self.seed = int(os.getenv("REAL_LLM_SEED", "42"))
         self._semantic_cache: dict[str, dict[str, Any]] = {}
         self._raw_semantic_cache: dict[str, dict[str, Any]] = {}
 
@@ -671,6 +678,8 @@ class RealLLMClient:
                 "prompt_bytes": len(prompt.encode("utf-8")),
                 "request_ms": 0.0,
                 "stream": self.stream,
+                "temperature": self.temperature,
+                "seed": self.seed,
             }
             return semantic_result
         if cache_key in self._semantic_cache:
@@ -680,6 +689,8 @@ class RealLLMClient:
                 "prompt_bytes": len(prompt.encode("utf-8")),
                 "request_ms": 0.0,
                 "stream": self.stream,
+                "temperature": self.temperature,
+                "seed": self.seed,
             }
             return cached
 
@@ -689,6 +700,8 @@ class RealLLMClient:
             "prompt_bytes": len(prompt.encode("utf-8")),
             "request_ms": 0.0,
             "stream": self.stream,
+            "temperature": self.temperature,
+            "seed": self.seed,
             "attempts": 0,
             "retried": False,
         }
@@ -736,6 +749,8 @@ class RealLLMClient:
             "max_tokens": self.max_tokens,
             "max_retries": self.max_retries,
             "stream": self.stream,
+            "temperature": self.temperature,
+            "seed": self.seed,
             "sample_command": sample_command,
             "semantic_result": result if "error" not in result else {},
             "error": result.get("error"),
@@ -756,7 +771,8 @@ class RealLLMClient:
                 {"role": "user", "content": prompt},
             ],
             "stream": self.stream,
-            "temperature": 0.0,
+            "temperature": self.temperature,
+            "seed": self.seed,
             "max_tokens": self.max_tokens,
         }
         headers = {

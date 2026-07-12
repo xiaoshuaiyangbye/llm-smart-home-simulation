@@ -41,15 +41,16 @@ Replay any compatible JSONL log:
 
 - `POST /api/research/run`: run one deterministic structured-agent tick and write a JSONL log.
 - `GET /api/research/logs`: list available JSONL research logs.
-- `POST /api/research/replay`: replay one JSONL log and compare state hashes.
+- `POST /api/research/replay`: replay one JSONL log, verify recorded planner outputs when semantic input provenance is present, and compare state hashes.
 
 ## Replay Contract
 
 Each run records:
 
 - `run_started`: seed, tick duration, initial state hash, initial state snapshot.
+- `agent_semantic_input`: structured semantic input plus a canonical SHA-256 fingerprint.
 - `agent_planned` and `agent_executed`: structured JSON decisions.
 - `tool_call_completed`: validated tool calls and outputs.
 - `tick_completed`: before/after hashes, state snapshot, and field-level diff.
 
-`ReplayEngine` replays every tick from the same seed and compares state hashes with the recorded log.
+`ReplayEngine` replays every tick from the same seed and compares state hashes with the recorded log. For logs containing `agent_semantic_input`, it also re-runs the deterministic planner and reports any planner-output mismatch. Legacy logs without that event remain execution-replayable, but are explicitly returned with `unverified_plans` and cannot support a semantic-to-plan reproducibility claim.

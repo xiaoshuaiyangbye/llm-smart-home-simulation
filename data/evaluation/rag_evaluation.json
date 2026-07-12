@@ -1,0 +1,14 @@
+[
+  {
+    "query": "comfort standards temperature",
+    "expected_source_contains": "national_standards_basis"
+  },
+  {
+    "query": "devices air conditioner",
+    "expected_source_contains": "system_description"
+  },
+  {
+    "query": "multi agent collaboration",
+    "expected_source_contains": "multi_agent_collaboration"
+  }
+]

@@ -1,0 +1,17 @@
+.git
+.pytest_cache
+.runtime
+.vscode
+**/__pycache__
+**/*.py[cod]
+**/.env
+**/.venv
+**/venv
+**/node_modules
+**/dist
+**/.vite
+*.log
+data/logs/*
+data/results/*
+!data/logs/.gitkeep
+!data/results/.gitkeep

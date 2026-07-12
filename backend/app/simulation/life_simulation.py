@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.experiments.logger import ExperimentLogger
 from app.experiments.task_runner import TaskRunner
+from app.research import RobustnessConfig, UserPreferenceService
 from app.schemas.state_schema import ActivityType, RoomId, SmartHomeState, WeatherType
 from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse
 from app.simulation.baseline_policy import plan_conventional_baseline_actions
@@ -129,13 +130,18 @@ class LifeSimulationService:
         environment: SmartHomeEnvironment,
         experiment_logger: ExperimentLogger,
         project_root: Path,
+        output_dir: Path | None = None,
+        preference_service: UserPreferenceService | None = None,
+        robustness_config: RobustnessConfig | None = None,
     ) -> None:
         self.environment = environment
         self.experiment_logger = experiment_logger
         self.project_root = project_root
-        self.output_dir = project_root / "data" / "results" / "life_simulation"
+        self.output_dir = output_dir or project_root / "data" / "results" / "life_simulation"
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.weather_profile = HistoricalWeatherProfile(project_root)
+        self.preference_service = preference_service
+        self.robustness_config = robustness_config or RobustnessConfig()
         self.baseline_environment = SmartHomeEnvironment()
         self.runner: TaskRunner | None = None
         self.active = False
@@ -334,7 +340,9 @@ class LifeSimulationService:
             AgentCommandRequest(
                 user_command=event.command,
                 current_room_id=current_room_id,
-            )
+            ),
+            preference_service=self.preference_service,
+            robustness_config=self.robustness_config,
         )
         response_time_ms = round((time.perf_counter() - started_at) * 1000, 2)
         state = self.environment.set_away() if event.activity_type == "away" else self.environment.set_current_room(event.room_id, event.activity_type)
@@ -364,6 +372,8 @@ class LifeSimulationService:
             "llm_prompt_bytes": llm_metrics.get("prompt_bytes", ""),
             "llm_cache_hit": llm_metrics.get("cache_hit", ""),
             "llm_stream": llm_metrics.get("stream", ""),
+            "llm_temperature": llm_metrics.get("temperature", ""),
+            "llm_seed": llm_metrics.get("seed", ""),
             "error": response.error or "",
         }
         self.event_records.append(record)

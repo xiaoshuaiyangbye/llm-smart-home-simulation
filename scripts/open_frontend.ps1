@@ -1,7 +1,28 @@
 $ErrorActionPreference = "SilentlyContinue"
 
-$frontendUrl = "http://localhost:5173"
-$backendHealthUrl = "http://localhost:8000/health"
+$projectRoot = Resolve-Path "$PSScriptRoot\.."
+$deployEnv = Join-Path $projectRoot "deploy\.env"
+$frontendPort = $env:FRONTEND_PORT
+
+if (-not $frontendPort -and (Test-Path $deployEnv)) {
+  $frontendPort = Get-Content $deployEnv |
+    Where-Object { $_ -match "^\s*FRONTEND_PORT\s*=" } |
+    Select-Object -First 1
+  if ($frontendPort) {
+    $frontendPort = ($frontendPort -replace "^\s*FRONTEND_PORT\s*=", "").Trim()
+  }
+}
+
+if (-not $frontendPort) {
+  $frontendPort = "80"
+}
+
+if ($frontendPort -eq "80") {
+  $frontendUrl = "http://localhost"
+} else {
+  $frontendUrl = "http://localhost:$frontendPort"
+}
+$backendHealthUrl = "$frontendUrl/health"
 
 function Wait-HttpReady {
   param(

@@ -1,26 +1,42 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   backToToday,
   controlDevice,
+  createAuthSession,
+  fetchAgentHealth,
+  fetchAuthStatus,
+  fetchResearchProfile,
+  fetchRobustnessConfig,
   fetchLifeSimulationStatus,
   fetchSmartHomeState,
   resetSimulation,
   stepSimulation,
   startLifeSimulation,
   stopLifeSimulation,
+  submitResearchFeedback,
   submitTask,
   tickLifeSimulation,
   updateEnvironment,
+  updateResearchProfile,
+  updateRobustnessConfig,
 } from "./api/client";
 import { AgentOutputPanel } from "./components/AgentOutputPanel";
+import { AccessGate } from "./components/AccessGate";
 import { ChartPanel } from "./components/ChartPanel";
 import { ControlPanel } from "./components/ControlPanel";
 import { LifeSimulationPanel } from "./components/LifeSimulationPanel";
+import { ResearchControlPanel } from "./components/ResearchControlPanel";
 import { StatePanel } from "./components/StatePanel";
-import { HouseScene } from "./scene/HouseScene";
-import type { ActivityType, AgentOutput, DeviceActionRequest, HistoryPoint, LifeSimulationDuration, LifeSimulationStatus, RoomId, SmartHomeState, WeatherType } from "./types/state";
+import { ViewModeToggle, type SceneViewMode } from "./components/ViewModeToggle";
+import { HomePlan2D } from "./scene/HomePlan2D";
+import type { ActivityType, AgentHealth, AgentOutput, DeviceActionRequest, HistoryPoint, LifeSimulationDuration, LifeSimulationStatus, RobustnessConfig, RoomId, SmartHomeState, UserPreferenceProfile, WeatherType } from "./types/state";
 import "./styles.css";
+
+const HouseScene = lazy(async () => {
+  const module = await import("./scene/HouseScene");
+  return { default: module.HouseScene };
+});
 
 const ROOM_LABELS: Record<RoomId, string> = {
   living_room: "客厅",
@@ -67,10 +83,35 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [lifeSimulation, setLifeSimulation] = useState<LifeSimulationStatus | null>(null);
+  const [agentHealth, setAgentHealth] = useState<AgentHealth | null>(null);
+  const [researchProfile, setResearchProfile] = useState<UserPreferenceProfile | null>(null);
+  const [robustnessConfig, setRobustnessConfig] = useState<RobustnessConfig | null>(null);
+  const [authRequired, setAuthRequired] = useState<boolean | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [sceneView, setSceneView] = useState<SceneViewMode>(
+    new URLSearchParams(window.location.search).get("view") === "3d" ? "3d" : "2d",
+  );
+  const [sceneLayer, setSceneLayer] = useState<"sensors" | "devices" | "structure">("sensors");
+  const [sceneResetKey, setSceneResetKey] = useState(0);
+  const scenePanelRef = useRef<HTMLElement | null>(null);
   const tickInFlightRef = useRef(false);
   const isScreenshotMode = new URLSearchParams(window.location.search).get("screenshot") === "1";
 
   useEffect(() => {
+    fetchAuthStatus()
+      .then(({ requires_auth }) => {
+        setAuthRequired(requires_auth);
+        setIsAuthenticated(!requires_auth);
+      })
+      .catch((error: unknown) => {
+        setAuthRequired(true);
+        setAuthError(error instanceof Error ? error.message : "无法确认访问权限。");
+      });
+  }, []);
+
+  useEffect(() => {
+    if (authRequired === null || !isAuthenticated) return;
     fetchSmartHomeState()
       .then((nextState) => applyState(nextState))
       .catch(() => setMessage("无法连接后端服务，请确认 FastAPI 已启动。"));
@@ -80,7 +121,10 @@ export default function App() {
         if (status.active) applyLifeSimulationStatus(status);
       })
       .catch(() => undefined);
-  }, []);
+    fetchAgentHealth().then(setAgentHealth).catch(() => setAgentHealth(null));
+    fetchResearchProfile().then(setResearchProfile).catch(() => setResearchProfile(null));
+    fetchRobustnessConfig().then(setRobustnessConfig).catch(() => setRobustnessConfig(null));
+  }, [authRequired, isAuthenticated]);
 
   const sceneTitle = useMemo(() => {
     if (!state) return "智能家居仿真实验平台";
@@ -90,6 +134,10 @@ export default function App() {
   const currentRoomId = useMemo(() => getRoomAtPosition(avatarPosition), [avatarPosition]);
   const currentRoomName = ROOM_LABELS[currentRoomId];
   const isLifeSimulationActive = Boolean(lifeSimulation?.active);
+  const canStartLifeSimulation = agentHealth?.success === true && agentHealth.llm_mode === "real";
+  const lifeSimulationUnavailableReason = agentHealth
+    ? agentHealth.error ?? "生活仿真需要已验证的真实 LLM 服务。"
+    : "正在检查真实 LLM 服务，请稍后重试。";
   const sceneCurrentRoomId = isLifeSimulationActive ? (lifeSimulation?.current_room_id ?? "corridor") : currentRoomId;
   const sceneCurrentRoomName = isLifeSimulationActive ? (lifeSimulation?.current_room_name ?? "离家") : currentRoomName;
   const showAvatar = !isLifeSimulationActive || Boolean(lifeSimulation?.current_room_id);
@@ -188,6 +236,19 @@ export default function App() {
     }
   }
 
+  async function handleAuthentication(accessToken: string) {
+    setIsLoading(true);
+    setAuthError("");
+    try {
+      await createAuthSession(accessToken);
+      setIsAuthenticated(true);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "访问验证失败。");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   function handleStep() {
     return runWithLoading(async () => {
       const nextState = await stepSimulation(1);
@@ -252,6 +313,34 @@ export default function App() {
     });
   }
 
+  function handleSaveResearchProfile(profile: Partial<UserPreferenceProfile>) {
+    return runWithLoading(async () => {
+      const nextProfile = await updateResearchProfile(profile);
+      setResearchProfile(nextProfile);
+      setMessage("用户偏好已更新，后续智能体规划将使用新的个性化目标。");
+    });
+  }
+
+  function handleResearchFeedback(satisfaction: number) {
+    return runWithLoading(async () => {
+      const nextProfile = await submitResearchFeedback({
+        satisfaction,
+        desired_temperature_c: researchProfile?.preferred_temperature_c,
+        desired_illuminance_lux: researchProfile?.preferred_illuminance_lux,
+      });
+      setResearchProfile(nextProfile);
+      setMessage(`已记录 ${satisfaction} 星反馈，并更新长期用户偏好模型。`);
+    });
+  }
+
+  function handleSaveRobustness(config: RobustnessConfig) {
+    return runWithLoading(async () => {
+      const nextConfig = await updateRobustnessConfig(config);
+      setRobustnessConfig(nextConfig);
+      setMessage(nextConfig.enabled ? "鲁棒性扰动实验已启用。" : "鲁棒性扰动实验已关闭。");
+    });
+  }
+
   function handleTaskSubmit() {
     return runWithLoading(async () => {
       const scopedCommand = withCurrentRoomContext(command, currentRoomName);
@@ -260,6 +349,20 @@ export default function App() {
       setAgentOutput(response.agent_output);
       setMessage(`智能体已感知你在${currentRoomName}，并完成任务规划与控制。`);
     });
+  }
+
+  async function handleSceneFullscreen() {
+    const element = scenePanelRef.current;
+    if (!element) return;
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await element.requestFullscreen();
+  }
+
+  if (authRequired === null || (authRequired && !isAuthenticated)) {
+    return <AccessGate error={authError} isLoading={isLoading} onSubmit={handleAuthentication} />;
   }
 
   return (
@@ -291,24 +394,59 @@ export default function App() {
           </div>
         </div>
       <div className="dashboard">
-        <section className="scene-panel">
-          <HouseScene
-            state={displayedState}
-            avatarPosition={avatarPosition}
-            currentRoomId={sceneCurrentRoomId}
-            avatarVisible={showAvatar}
-          />
-          <button className="scene-fullscreen" type="button" aria-label="fullscreen">全屏</button>
-          <div className="scene-rail" aria-hidden="true">
-            <span>测温</span>
-            <span>设备</span>
-            <span>结构</span>
+        <section className="scene-panel" ref={scenePanelRef}>
+          {sceneView === "2d" ? (
+            <HomePlan2D
+              state={displayedState}
+              currentRoomId={sceneCurrentRoomId}
+              onRoomSelect={(roomId) => {
+                setAvatarPosition(ROOM_AVATAR_POSITIONS[roomId]);
+                setMessage(`已定位到${ROOM_LABELS[roomId]}。`);
+              }}
+            />
+          ) : (
+            <Suspense fallback={<div className="scene-loading" role="status">正在加载 3D 户型场景…</div>}>
+              <HouseScene
+                state={displayedState}
+                avatarPosition={avatarPosition}
+                currentRoomId={sceneCurrentRoomId}
+                avatarVisible={showAvatar}
+                cameraMode="3d"
+                sceneLayer={sceneLayer}
+                resetKey={sceneResetKey}
+              />
+            </Suspense>
+          )}
+          <button className="scene-fullscreen" type="button" aria-label="全屏显示户型" onClick={handleSceneFullscreen}>全屏</button>
+          <div className="scene-rail" aria-label="户型图层">
+            <button
+              type="button"
+              className={sceneLayer === "sensors" ? "active" : ""}
+              onClick={() => setSceneLayer("sensors")}
+            >
+              测温点
+            </button>
+            <button
+              type="button"
+              className={sceneLayer === "devices" ? "active" : ""}
+              onClick={() => setSceneLayer("devices")}
+            >
+              设备层
+            </button>
+            <button
+              type="button"
+              className={sceneLayer === "structure" ? "active" : ""}
+              onClick={() => setSceneLayer("structure")}
+            >
+              结构层
+            </button>
           </div>
-          <div className="scene-toolbar" aria-hidden="true">
-            <span>视角控制</span>
-            <span>鸟瞰</span>
-            <span>漫游</span>
-            <span>复位</span>
+          <div className="scene-toolbar" aria-label="户型视角控制">
+            <ViewModeToggle
+              value={sceneView}
+              onChange={setSceneView}
+              onReset={() => setSceneResetKey((key) => key + 1)}
+            />
           </div>
           <div className="movement-hint">
             {isLifeSimulationActive ? `生活仿真：${sceneCurrentRoomName}` : `W/A/S/D 移动“我”：当前在 ${currentRoomName}`}
@@ -318,9 +456,19 @@ export default function App() {
           <LifeSimulationPanel
             status={lifeSimulation}
             isLoading={isLoading}
+            canStart={canStartLifeSimulation}
+            unavailableReason={lifeSimulationUnavailableReason}
             onStart={handleStartLifeSimulation}
             onStop={handleStopLifeSimulation}
             onBackToToday={handleBackToToday}
+          />
+          <ResearchControlPanel
+            profile={researchProfile}
+            robustness={robustnessConfig}
+            isLoading={isLoading || isLifeSimulationActive}
+            onSaveProfile={handleSaveResearchProfile}
+            onSaveRobustness={handleSaveRobustness}
+            onFeedback={handleResearchFeedback}
           />
           <StatePanel state={displayedState} lastMessage={message} />
           <ControlPanel

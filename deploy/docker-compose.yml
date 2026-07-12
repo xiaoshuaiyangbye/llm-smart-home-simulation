@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      args:
+        DOCKER_HUB_PREFIX: ${DOCKER_HUB_PREFIX:-}
+    env_file:
+      - ./backend.env
+    expose:
+      - "8000"
+    volumes:
+      - ../data/logs:/app/data/logs
+      - ../data/results:/app/data/results
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        DOCKER_HUB_PREFIX: ${DOCKER_HUB_PREFIX:-}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    restart: unless-stopped

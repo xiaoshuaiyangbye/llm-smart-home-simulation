@@ -13,6 +13,7 @@ The system simulates rooms, virtual devices, outdoor conditions, comfort metrics
 - `backend/app/agents/`: semantic parsing, planning, execution, feedback, and context memory.
 - `backend/app/experiments/`: orchestration, logging, batch runs, and evaluation utilities.
 - `frontend/src/`: React UI, API client, state types, panels, and 3D scene.
+- `deploy/`: Docker Compose, Nginx, and cloud deployment environment templates.
 - `scripts/`: startup, validation, and experiment entry points.
 
 ## Environment Model

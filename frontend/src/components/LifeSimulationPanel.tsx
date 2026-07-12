@@ -3,6 +3,8 @@ import type { LifeSimulationDuration, LifeSimulationStatus } from "../types/stat
 interface LifeSimulationPanelProps {
   status: LifeSimulationStatus | null;
   isLoading: boolean;
+  canStart: boolean;
+  unavailableReason?: string;
   onStart: (duration: LifeSimulationDuration) => Promise<void>;
   onStop: () => Promise<void>;
   onBackToToday: () => Promise<void>;
@@ -15,14 +17,16 @@ const DURATION_LABELS: Record<LifeSimulationDuration, string> = {
 };
 
 const DURATION_BUTTON_LABELS: Record<LifeSimulationDuration, string> = {
-  day: "模仿一天 (1天)",
-  week: "模仿一周 (7天)",
-  month: "模仿一个月 (30天)",
+  day: "模拟一天 (1天)",
+  week: "模拟一周 (7天)",
+  month: "模拟一个月 (30天)",
 };
 
 export function LifeSimulationPanel({
   status,
   isLoading,
+  canStart,
+  unavailableReason,
   onStart,
   onStop,
   onBackToToday,
@@ -38,7 +42,7 @@ export function LifeSimulationPanel({
       <div className="life-sim-header">
         <div>
           <h2>生活快速仿真</h2>
-          <p>{active ? `正在模仿 ${duration}` : "按真实 API 智能体快速推演"}</p>
+          <p>{active ? `正在模拟 ${duration}` : "按真实 API 智能体快速推演"}</p>
         </div>
         <span className={active ? "run-status active" : "run-status"}>{active ? "运行中" : "待启动"}</span>
       </div>
@@ -47,7 +51,7 @@ export function LifeSimulationPanel({
           <button
             key={duration}
             type="button"
-            disabled={isLoading || active}
+            disabled={isLoading || active || !canStart}
             onClick={() => onStart(duration)}
           >
             {DURATION_BUTTON_LABELS[duration]}
@@ -60,6 +64,7 @@ export function LifeSimulationPanel({
           回到今天
         </button>
       </div>
+      {!active && !canStart && <p className="panel-notice" role="status">{unavailableReason ?? "生活仿真需要可用的真实 LLM 配置。"}</p>}
       <div className="life-progress" aria-label="生活仿真进度">
         <i style={{ width: `${progress}%` }} />
       </div>
