@@ -1,5 +1,6 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { gzipSync } from "node:zlib";
 
 const distDirectory = resolve("dist");
 const html = await readFile(resolve(distDirectory, "index.html"), "utf8");
@@ -28,4 +29,16 @@ if (initialBytes >= maxEntryBytes) {
   throw new Error("The default 2D entry exceeds the 500 KiB lazy-loading budget.");
 }
 
-console.log(`Verified: the default 2D entry does not eagerly import the 3D runtime and stays below 500 KiB (${initialBytes} bytes).`);
+const assetNames = await readdir(resolve(distDirectory, "assets"));
+const threeRuntimeName = assetNames.find((name) => /^three-runtime-.+\.js$/.test(name));
+if (!threeRuntimeName) {
+  throw new Error("Unable to locate the deferred 3D runtime bundle.");
+}
+const threeRuntime = await readFile(resolve(distDirectory, "assets", threeRuntimeName));
+const deferredThreeGzipBytes = gzipSync(threeRuntime).byteLength;
+const maxDeferredThreeGzipBytes = 300 * 1024;
+if (deferredThreeGzipBytes > maxDeferredThreeGzipBytes) {
+  throw new Error(`The deferred 3D runtime exceeds its 300 KiB gzip budget (${deferredThreeGzipBytes} bytes).`);
+}
+
+console.log(`Verified: 2D initial JavaScript is ${initialBytes} bytes and deferred 3D gzip is ${deferredThreeGzipBytes} bytes within budget.`);
