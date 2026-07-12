@@ -65,7 +65,7 @@ export function LifeSimulationPanel({
         </button>
       </div>
       {!active && !canStart && <p className="panel-notice" role="status">{unavailableReason ?? "生活仿真需要可用的真实 LLM 配置。"}</p>}
-      <div className="life-progress" aria-label="生活仿真进度">
+      <div className="life-progress" role="progressbar" aria-label="生活仿真进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
         <i style={{ width: `${progress}%` }} />
       </div>
       <div className="life-sim-kpis">

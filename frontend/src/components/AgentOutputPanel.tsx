@@ -196,6 +196,8 @@ export function AgentOutputPanel({
             <button
               key={tab}
               type="button"
+              role="tab"
+              aria-selected={tab === activeTab}
               className={tab === activeTab ? "active" : ""}
               onClick={() => setActiveTab(tab)}
             >

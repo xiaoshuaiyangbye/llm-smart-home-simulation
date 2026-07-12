@@ -146,6 +146,7 @@ function RoomControl({
           </button>
           <input
             type="number"
+            aria-label={`${ROOM_LABELS[roomId]} 空调温度`}
             min={16}
             max={30}
             value={ac.setpoint_c}

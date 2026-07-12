@@ -8,12 +8,12 @@
   --nav: #071725;
   --nav-2: #0b2d34;
   --ink: #102232;
-  --muted: #6e8090;
+  --muted: #526a7b;
   --line: #e0eaf0;
   --panel: #ffffff;
   --canvas: #eef8fd;
   --soft: #f5f9fb;
-  --teal: #0d9a87;
+  --teal: #087766;
   --teal-strong: #087b6d;
   --teal-soft: #e8faf6;
   --cyan: #35aede;
@@ -624,7 +624,7 @@ h3 {
 .run-status {
   border-color: #e6edf2;
   background: #f6fafc;
-  color: #758697;
+  color: #526a7b;
 }
 
 .life-sim-actions {
@@ -779,7 +779,7 @@ label,
 
 .standard-note {
   margin-top: 10px;
-  color: #65788a;
+  color: #526a7b;
   font-size: 12px;
   line-height: 1.5;
 }

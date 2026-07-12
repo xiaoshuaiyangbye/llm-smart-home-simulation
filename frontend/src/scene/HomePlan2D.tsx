@@ -22,7 +22,7 @@ export function HomePlan2D({ state, currentRoomId, onRoomSelect }: HomePlan2DPro
   const roomsById = new Map(state?.rooms.map((room) => [room.room_id, room]));
   return (
     <div className="home-plan-2d" role="group" aria-label="可交互户型图">
-      <svg viewBox="0 0 570 390" role="img" aria-label="智能家居二维户型">
+      <svg viewBox="0 0 570 390" role="presentation">
         <rect x="8" y="8" width="554" height="374" rx="12" className="plan-shell" />
         {layout.map((planRoom) => {
           const room = roomsById.get(planRoom.id);
