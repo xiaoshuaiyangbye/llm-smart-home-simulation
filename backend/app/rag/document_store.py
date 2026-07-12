@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import math
+import json
+import os
 import re
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
+from urllib.request import Request, urlopen
 
 
 @dataclass(frozen=True)
@@ -16,16 +20,11 @@ class RagChunk:
     text: str
     token_counts: Counter[str]
     norm: float
+    embedding: tuple[float, ...] | None = None
 
 
 class RagDocumentStore:
-    """Small local RAG store with deterministic lexical vectors.
-
-    The class intentionally avoids heavyweight dependencies so the simulation
-    remains runnable in a clean local environment. FAISS, Chroma, or local
-    embedding models can replace the scoring internals without changing the
-    query API used by agents.
-    """
+    """Local RAG with optional Ollama embeddings and a deterministic fallback."""
 
     def __init__(self, project_root: Path | None = None, chunk_size: int = 900, chunk_overlap: int = 140) -> None:
         self.project_root = project_root or Path(__file__).resolve().parents[3]
@@ -33,6 +32,12 @@ class RagDocumentStore:
         self.chunk_overlap = chunk_overlap
         self._chunks: list[RagChunk] = []
         self._signatures: dict[str, tuple[int, int]] = {}
+        self.embedding_mode = os.getenv("RAG_RETRIEVAL_MODE", "lexical").lower()
+        self.embedding_model = os.getenv("RAG_EMBEDDING_MODEL", "qwen3-embedding:0.6b")
+        self.embedding_base_url = os.getenv("RAG_EMBEDDING_BASE_URL", "http://127.0.0.1:11434/v1")
+        self.embedding_timeout_seconds = float(os.getenv("RAG_EMBEDDING_TIMEOUT_SECONDS", "30"))
+        self._embedding_active = False
+        self._embedding_fallback_reason: str | None = None
 
     def query(self, query: str, top_k: int = 5, filters: dict[str, Any] | None = None) -> dict[str, Any]:
         self.ensure_index()
@@ -41,11 +46,16 @@ class RagDocumentStore:
         if not query_counts or query_norm == 0:
             return self._empty_result(query, top_k)
 
+        embedded_query = self._embed_text(query) if self._embedding_active else None
         scored: list[tuple[float, RagChunk]] = []
         for chunk in self._chunks:
             if filters and not self._matches_filters(chunk, filters):
                 continue
-            score = _cosine(query_counts, query_norm, chunk.token_counts, chunk.norm)
+            score = (
+                _vector_cosine(embedded_query, chunk.embedding)
+                if embedded_query is not None and chunk.embedding is not None
+                else _cosine(query_counts, query_norm, chunk.token_counts, chunk.norm)
+            )
             if score > 0:
                 scored.append((score, chunk))
 
@@ -74,6 +84,7 @@ class RagDocumentStore:
         self._signatures = {}
         for path in self._source_paths():
             self._index_path(path)
+        self._attach_embeddings_if_requested()
         return self.stats()
 
     def ensure_index(self) -> None:
@@ -87,7 +98,9 @@ class RagDocumentStore:
             "source_count": len(sources),
             "chunk_count": len(self._chunks),
             "sources": sources,
-            "engine": "local_lexical_cosine",
+            "engine": "local_ollama_embedding" if self._embedding_active else "local_lexical_cosine",
+            "embedding_model": self.embedding_model if self._embedding_active else None,
+            "embedding_fallback_reason": self._embedding_fallback_reason,
         }
 
     def sources(self) -> dict[str, Any]:
@@ -136,6 +149,48 @@ class RagDocumentStore:
             )
         self._signatures = self._collect_signatures()
 
+    def _attach_embeddings_if_requested(self) -> None:
+        self._embedding_active = False
+        self._embedding_fallback_reason = None
+        if self.embedding_mode != "local_embedding":
+            return
+        try:
+            vectors = self._embed_many([chunk.text for chunk in self._chunks])
+            if len(vectors) != len(self._chunks) or not vectors:
+                raise RuntimeError("embedding response count does not match indexed chunks")
+            self._chunks = [replace(chunk, embedding=vector) for chunk, vector in zip(self._chunks, vectors)]
+            self._embedding_active = True
+        except (OSError, RuntimeError, ValueError) as exc:
+            self._embedding_fallback_reason = type(exc).__name__
+
+    def _embed_text(self, text: str) -> tuple[float, ...] | None:
+        try:
+            return self._embed_many([text])[0]
+        except (OSError, RuntimeError, ValueError) as exc:
+            self._embedding_active = False
+            self._embedding_fallback_reason = type(exc).__name__
+            return None
+
+    def _embed_many(self, inputs: list[str]) -> list[tuple[float, ...]]:
+        parsed = urlsplit(self.embedding_base_url)
+        if not parsed.scheme or not parsed.netloc:
+            raise ValueError("RAG_EMBEDDING_BASE_URL must be an absolute URL")
+        base_path = parsed.path.rstrip("/")
+        if base_path.endswith("/v1"):
+            base_path = base_path[:-3]
+        endpoint = urlunsplit((parsed.scheme, parsed.netloc, f"{base_path}/api/embed", "", ""))
+        payload = json.dumps({"model": self.embedding_model, "input": inputs}, ensure_ascii=False).encode("utf-8")
+        request = Request(endpoint, data=payload, headers={"Content-Type": "application/json"}, method="POST")
+        with urlopen(request, timeout=self.embedding_timeout_seconds) as response:
+            body = json.loads(response.read().decode("utf-8"))
+        raw_vectors = body.get("embeddings") if isinstance(body, dict) else None
+        if not isinstance(raw_vectors, list) or not raw_vectors:
+            raise RuntimeError("embedding response is missing embeddings")
+        vectors = [tuple(float(value) for value in vector) for vector in raw_vectors if isinstance(vector, list)]
+        if len(vectors) != len(inputs) or any(not vector for vector in vectors):
+            raise RuntimeError("embedding response contains invalid vectors")
+        return vectors
+
     def _relative(self, path: Path) -> str:
         return path.relative_to(self.project_root).as_posix()
 
@@ -175,6 +230,16 @@ def _cosine(left: Counter[str], left_norm: float, right: Counter[str], right_nor
         left, right = right, left
     dot = sum(value * right.get(token, 0) for token, value in left.items())
     return dot / (left_norm * right_norm)
+
+
+def _vector_cosine(left: tuple[float, ...], right: tuple[float, ...]) -> float:
+    if len(left) != len(right):
+        return 0.0
+    left_norm = math.sqrt(sum(value * value for value in left))
+    right_norm = math.sqrt(sum(value * value for value in right))
+    if left_norm == 0 or right_norm == 0:
+        return 0.0
+    return sum(a * b for a, b in zip(left, right)) / (left_norm * right_norm)
 
 
 def _split_text(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
