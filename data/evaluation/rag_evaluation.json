@@ -1,5 +1,7 @@
-[
-  {
+{
+  "schema_version": "rag_evaluation_cases_v1",
+  "cases": [
+    {
     "query": "comfort standards temperature",
     "expected_source_contains": "national_standards_basis"
   },
@@ -7,8 +9,21 @@
     "query": "devices air conditioner",
     "expected_source_contains": "system_description"
   },
-  {
-    "query": "multi agent collaboration",
-    "expected_source_contains": "multi_agent_collaboration"
-  }
-]
+    {
+      "query": "multi agent collaboration",
+      "expected_source_contains": "multi_agent_collaboration"
+    },
+    {
+      "query": "real device emergency stop rollback field validation",
+      "expected_source_contains": "field_validation_protocol"
+    },
+    {
+      "query": "task semantic annotation provenance control goal target range",
+      "expected_source_contains": "improvement_backlog"
+    },
+    {
+      "query": "weather configuration rainy sunny rooms",
+      "expected_source_contains": "weather.yaml"
+    }
+  ]
+}

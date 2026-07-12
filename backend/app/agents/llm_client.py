@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from app.schemas.state_schema import SmartHomeState
@@ -280,6 +281,20 @@ def _has_explicit_ac_request(user_command: str) -> bool:
     return "空调" in user_command or "ac" in normalized_text or "air conditioner" in normalized_text
 
 
+def _forced_basic_device_intent_from_text(user_command: str) -> str | None:
+    """Keep unqualified single-device switches from being promoted to a scene."""
+    normalized_text = user_command.lower()
+    if _forced_scene_intent_from_text(user_command) or _has_away_command(user_command):
+        return None
+    if any(keyword in user_command for keyword in ["舒适", "节能", "省电", "温度", "湿度", "采光", "光线", "明亮"]):
+        return None
+    if "空调" in user_command or "ac" in normalized_text or "air conditioner" in normalized_text:
+        return "basic_ac_control"
+    if "灯" in user_command or "照明" in user_command or "light" in normalized_text:
+        return "basic_light_control"
+    return None
+
+
 def _is_transition_or_mild_context(current_state: SmartHomeState) -> bool:
     source = current_state.outdoor_environment.data_updated_at or ""
     if "mild_may_typical_profile" in source:
@@ -394,8 +409,15 @@ def _normalize_semantic_result(
         intent = forced_scene_intent
     if _has_away_command(user_command):
         intent = "away_mode"
+    forced_basic_device_intent = _forced_basic_device_intent_from_text(user_command)
+    if forced_basic_device_intent:
+        intent = forced_basic_device_intent
     explicit_opening_devices = _detect_opening_devices_from_text(user_command)
-    if explicit_opening_devices and _detect_control_goal(user_command, "basic_curtain_control") in {"turn_on", "turn_off"}:
+    if (
+        not forced_basic_device_intent
+        and explicit_opening_devices
+        and _detect_control_goal(user_command, "basic_curtain_control") in {"turn_on", "turn_off"}
+    ):
         intent = "basic_curtain_control"
 
     detected_scope = _detect_scope(user_command)
@@ -415,12 +437,12 @@ def _normalize_semantic_result(
 
     targets = result.get("targets") if isinstance(result.get("targets"), dict) else {}
     normalized_targets = TARGETS_BY_INTENT[intent].copy()
-    if isinstance(targets.get("illuminance_lux_range"), list) and len(targets["illuminance_lux_range"]) == 2:
+    if not forced_basic_device_intent and isinstance(targets.get("illuminance_lux_range"), list) and len(targets["illuminance_lux_range"]) == 2:
         normalized_targets["illuminance_lux_range"] = [
             float(targets["illuminance_lux_range"][0]),
             float(targets["illuminance_lux_range"][1]),
         ]
-    if isinstance(targets.get("temperature_c_range"), list) and len(targets["temperature_c_range"]) == 2:
+    if not forced_basic_device_intent and isinstance(targets.get("temperature_c_range"), list) and len(targets["temperature_c_range"]) == 2:
         normalized_targets["temperature_c_range"] = [
             float(targets["temperature_c_range"][0]),
             float(targets["temperature_c_range"][1]),
@@ -430,6 +452,8 @@ def _normalize_semantic_result(
     if explicit_temperature and intent in {"basic_ac_control", "thermal_comfort_control"}:
         normalized_targets["temperature_c_range"] = explicit_temperature
     elif (
+        not forced_basic_device_intent
+        and
         intent not in {"away_mode", "basic_ac_control"}
         and _is_transition_or_mild_context(current_state)
         and not _has_explicit_ac_request(user_command)
@@ -447,7 +471,11 @@ def _normalize_semantic_result(
         "intent": intent,
         "room": room,
         "scope": scope,
-        "control_goal": result.get("control_goal") or _detect_control_goal(user_command, intent),
+        "control_goal": (
+            _detect_control_goal(user_command, intent) or result.get("control_goal")
+            if forced_basic_device_intent
+            else result.get("control_goal") or _detect_control_goal(user_command, intent)
+        ),
         "task_type": task_type,
         "targets": normalized_targets,
         "devices": _devices_for_command(user_command, intent, result),
@@ -656,6 +684,7 @@ class RealLLMClient:
         # sampling stream.
         self.temperature = float(os.getenv("REAL_LLM_TEMPERATURE", "0.0"))
         self.seed = int(os.getenv("REAL_LLM_SEED", "42"))
+        self._last_transport = "openai_compatible"
         self._semantic_cache: dict[str, dict[str, Any]] = {}
         self._raw_semantic_cache: dict[str, dict[str, Any]] = {}
 
@@ -681,6 +710,7 @@ class RealLLMClient:
                 "stream": self.stream,
                 "temperature": self.temperature,
                 "seed": self.seed,
+                "transport": "cache",
             }
             return semantic_result
         if cache_key in self._semantic_cache:
@@ -692,6 +722,7 @@ class RealLLMClient:
                 "stream": self.stream,
                 "temperature": self.temperature,
                 "seed": self.seed,
+                "transport": "cache",
             }
             return cached
 
@@ -705,6 +736,7 @@ class RealLLMClient:
             "seed": self.seed,
             "attempts": 0,
             "retried": False,
+            "transport": "openai_compatible",
         }
         last_error = ""
         last_content = ""
@@ -715,6 +747,7 @@ class RealLLMClient:
             try:
                 attempt_prompt = prompt if attempt == 1 else self._build_retry_prompt(prompt, last_content, last_error)
                 content = self._chat_completion(attempt_prompt)
+                metrics["transport"] = self._last_transport
                 last_content = content
                 parsed = self._parse_json_content(content)
                 if not isinstance(parsed, dict):
@@ -759,19 +792,20 @@ class RealLLMClient:
         }
 
     def _chat_completion(self, prompt: str) -> str:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "你是智能家居仿真实验平台中的语义理解智能体。"
+                    "必须只输出一个符合 RFC 8259 的 JSON 对象，不要输出 Markdown、代码块、解释文字或思考过程。"
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ]
         payload = {
             "model": self.model,
             "user": "llm-smart-home-simulation",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "你是智能家居仿真实验平台中的语义理解智能体。"
-                        "必须只输出一个符合 RFC 8259 的 JSON 对象，不要输出 Markdown、代码块、解释文字或思考过程。"
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
+            "messages": messages,
             "stream": self.stream,
             "temperature": self.temperature,
             "seed": self.seed,
@@ -793,13 +827,52 @@ class RealLLMClient:
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 if self.stream:
-                    return self._read_streaming_response(response)
-                response_payload = json.loads(response.read().decode("utf-8"))
+                    content = self._read_streaming_response(response)
+                else:
+                    response_payload = json.loads(response.read().decode("utf-8"))
+                    content = self._content_from_response_payload(response_payload)
         except HTTPError as exc:
             error_body = exc.read().decode("utf-8", errors="replace")[:500]
             raise RuntimeError(f"HTTP {exc.code}: {error_body}") from exc
+        except RuntimeError as exc:
+            if self._is_local_ollama() and "Empty" in str(exc):
+                return self._ollama_native_completion(messages)
+            raise
 
-        return self._content_from_response_payload(response_payload)
+        self._last_transport = "openai_compatible"
+        return content
+
+    def _is_local_ollama(self) -> bool:
+        return urlsplit(self.base_url).hostname in {"127.0.0.1", "localhost", "host.docker.internal"}
+
+    def _ollama_native_completion(self, messages: list[dict[str, str]]) -> str:
+        parsed = urlsplit(self.base_url)
+        base_path = parsed.path.rstrip("/")
+        if base_path.endswith("/v1"):
+            base_path = base_path[:-3]
+        endpoint = urlunsplit((parsed.scheme, parsed.netloc, f"{base_path}/api/chat", "", ""))
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": False,
+            "options": {"temperature": self.temperature, "seed": self.seed, "num_predict": self.max_tokens},
+        }
+        request = Request(
+            endpoint,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urlopen(request, timeout=self.timeout_seconds) as response:
+            response_payload = json.loads(response.read().decode("utf-8"))
+        try:
+            content = response_payload["message"]["content"]
+        except (KeyError, TypeError) as exc:
+            raise RuntimeError(f"Unexpected Ollama native response structure: {response_payload}") from exc
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("Empty Ollama native response content.")
+        self._last_transport = "ollama_native_fallback"
+        return content
 
     def _read_streaming_response(self, response) -> str:
         chunks: list[str] = []

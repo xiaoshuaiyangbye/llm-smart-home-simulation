@@ -1,0 +1,35 @@
+{
+  "schema_version": "field_validation_evidence_v1",
+  "claim_scope": "real_device_control",
+  "run_id": "replace-with-unique-field-run-id",
+  "recorded_at": "2026-01-01T00:00:00Z",
+  "artifact_directory": "replace-with-artifact-directory-containing-artifact_manifest.json",
+  "device_inventory": [
+    {
+      "entity_id": "light.example_room",
+      "manufacturer": "replace-with-manufacturer",
+      "model": "replace-with-model",
+      "firmware_version": "replace-with-firmware-version",
+      "gateway_version": "replace-with-gateway-version"
+    }
+  ],
+  "test_environment": {
+    "isolated": true,
+    "rollback_procedure": "replace-with-tested-rollback-procedure",
+    "emergency_stop": "replace-with-human-emergency-stop-procedure",
+    "fault_injection_log": "replace-with-fault-injection-log-reference"
+  },
+  "measurement": {
+    "sensor_readings_manifest": "replace-with-raw-sensor-readings-manifest",
+    "calibration_record": "replace-with-sensor-calibration-record",
+    "time_sync_method": "replace-with-time-synchronization-method",
+    "missing_data_policy": "replace-with-missing-data-policy"
+  },
+  "experiment": {
+    "baseline_policy": "replace-with-control-policy",
+    "preregistered_metrics": "replace-with-preregistered-metrics-reference",
+    "sampling_window": "replace-with-sampling-window",
+    "load_concurrency_configuration": "replace-with-load-and-concurrency-configuration",
+    "raw_logs_manifest": "replace-with-raw-logs-manifest"
+  }
+}

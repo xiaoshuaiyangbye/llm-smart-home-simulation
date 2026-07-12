@@ -770,6 +770,7 @@ def run_group(
             if runner is not None:
                 runner.reset_context_memory()
             apply_task_setup(environment, task)
+            state_fingerprint = initial_state_fingerprint(environment)
 
             started_at = time.perf_counter()
             pre_context_success = True
@@ -798,6 +799,7 @@ def run_group(
                 environment=environment,
                 response_time_ms=response_time_ms,
                 pre_context_success=pre_context_success,
+                initial_state_fingerprint=state_fingerprint,
                 effective_llm_mode=effective_llm_mode,
                 real_mode=real_mode,
                 semantic_provenance=semantic_provenance,
@@ -861,6 +863,13 @@ def activity_for_intent(intent: str) -> str:
     if intent == "sleep_mode":
         return "sleep"
     return "idle"
+
+
+def initial_state_fingerprint(environment: SmartHomeEnvironment) -> str:
+    """Bind every repeated semantic request to its fully initialized simulator input."""
+    payload = environment.get_state(refresh_realtime=False).model_dump(mode="json")
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def run_pre_context_commands(runner: TaskRunner, task: dict[str, Any]) -> bool:
@@ -958,6 +967,7 @@ def build_record(
     effective_llm_mode: str,
     real_mode: str,
     semantic_provenance: dict[str, object],
+    initial_state_fingerprint: str = "",
 ) -> dict[str, Any]:
     semantic = response.semantic_result or {}
     plan = response.plan_result or {}
@@ -1028,6 +1038,7 @@ def build_record(
         "semantic_provenance_status": semantic_provenance["provenance_status"],
         "semantic_adapter_sha256": semantic_provenance["semantic_adapter_sha256"],
         "semantic_runtime_fingerprint": semantic_provenance["semantic_runtime_fingerprint"],
+        "initial_state_fingerprint": initial_state_fingerprint,
         "execute_actions": group.execute_actions,
         "feedback_correction_enabled": group.enable_feedback_correction,
         "context_memory_enabled": group.enable_context_memory,

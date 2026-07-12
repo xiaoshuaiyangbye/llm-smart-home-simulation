@@ -55,3 +55,26 @@ def test_real_connection_reports_configured_model_revision(monkeypatch) -> None:
 
     assert status["success"] is True
     assert status["model_revision"] == "sha256:immutable-local-model"
+
+
+def test_local_ollama_empty_openai_response_uses_explicit_native_fallback(monkeypatch) -> None:
+    requests: list[object] = []
+
+    def fake_urlopen(request, timeout):
+        requests.append(request)
+        if request.full_url.endswith("/chat/completions"):
+            return _FakeResponse(b'{"choices":[{"message":{"content":""}}]}')
+        return _FakeResponse(b'{"message":{"content":"{}"}}')
+
+    monkeypatch.setenv("REAL_LLM_API_KEY", "ollama")
+    monkeypatch.setenv("REAL_LLM_BASE_URL", "http://127.0.0.1:11434/v1")
+    monkeypatch.setenv("REAL_LLM_STREAM", "false")
+    monkeypatch.setattr(llm_client, "urlopen", fake_urlopen)
+    client = llm_client.RealLLMClient()
+
+    assert client._chat_completion("return JSON") == "{}"
+    assert client._last_transport == "ollama_native_fallback"
+    assert len(requests) == 2
+    native_payload = json.loads(requests[1].data.decode("utf-8"))
+    assert native_payload["stream"] is False
+    assert native_payload["options"]["seed"] == 42

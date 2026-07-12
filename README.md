@@ -146,6 +146,23 @@ one immutable local model revision. The default local profile targets
 `qwen3:8b` through Ollama's OpenAI-compatible `http://127.0.0.1:11434/v1` endpoint.
 It disables streaming because the local OpenAI-compatible stream can otherwise
 end without content; semantic requests remain fully model-backed.
+If the local OpenAI-compatible endpoint itself returns an empty non-streaming
+message, the client retries through Ollama's native `/api/chat` endpoint for
+that local endpoint only. Each result records `llm_metrics.transport`, so
+`ollama_native_fallback` remains visible in experiment evidence rather than
+being mistaken for a normal OpenAI-compatible response.
+
+The local embedding index is persisted by default at `.runtime/rag_index.json`.
+It includes source-content fingerprints and an index checksum, so altered,
+corrupt, or configuration-incompatible caches are rebuilt rather than trusted.
+For a Docker deployment that must retain the cache across container recreation,
+set `RAG_INDEX_CACHE_PATH` to a mounted writable location. Inspect or evaluate
+retrieval with:
+
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\inspect_rag.py --reindex
+.\backend\.venv\Scripts\python.exe scripts\evaluate_rag.py --min-recall 1.0
+```
 
 For Docker deployment, keep API keys only in `deploy/backend.env`.
 
@@ -204,6 +221,24 @@ python scripts\run_seasonal_life_simulation.py
 ```
 
 Generated logs and reports are written under `data/logs/` and `data/results/`, which are ignored by Git.
+
+### Real-device claim acceptance
+
+This is a simulation platform. Do not claim real-device control, safety, or
+energy-saving results from its software tests. When field evidence is available,
+copy `data/field_validation/field_validation_evidence.example.json`, attach a
+SHA-256 manifest to the raw artifact directory, and validate the completed
+record before making a real-world claim:
+
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\verify_artifact_integrity.py create <artifact-directory>
+.\backend\.venv\Scripts\python.exe scripts\validate_field_validation_evidence.py <completed-evidence.json>
+```
+
+The validator requires isolated testing, tested rollback and emergency-stop
+procedures, device/firmware inventory, calibrated raw measurements, a baseline,
+and an intact artifact manifest. It is an acceptance gate, not a substitute for
+the required physical equipment and field run.
 
 ## API Overview
 

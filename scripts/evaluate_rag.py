@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -17,7 +18,11 @@ DEFAULT_CASES_PATH = PROJECT_ROOT / "data" / "evaluation" / "rag_evaluation.json
 
 
 def evaluate(cases_path: Path = DEFAULT_CASES_PATH) -> dict[str, object]:
-    cases = json.loads(cases_path.read_text(encoding="utf-8"))
+    raw_cases = cases_path.read_bytes()
+    loaded_cases = json.loads(raw_cases.decode("utf-8"))
+    cases = loaded_cases["cases"] if isinstance(loaded_cases, dict) else loaded_cases
+    if not isinstance(cases, list):
+        raise ValueError("RAG evaluation cases must be a list or an object with a cases list")
     store = RagDocumentStore(project_root=PROJECT_ROOT)
     results: list[dict[str, object]] = []
     for case in cases:
@@ -26,7 +31,15 @@ def evaluate(cases_path: Path = DEFAULT_CASES_PATH) -> dict[str, object]:
         sources = [str(match["source"]) for match in result["matches"]]
         results.append({"query": case["query"], "passed": any(expected in source for source in sources), "sources": sources})
     passed = sum(1 for item in results if item["passed"])
-    return {"passed": passed, "total": len(results), "recall_at_3": passed / len(results) if results else 0.0, "results": results}
+    return {
+        "evaluation_schema_version": "rag_evaluation_report_v2",
+        "evaluation_suite_sha256": hashlib.sha256(raw_cases).hexdigest(),
+        "index": store.stats(),
+        "passed": passed,
+        "total": len(results),
+        "recall_at_3": passed / len(results) if results else 0.0,
+        "results": results,
+    }
 
 
 def main() -> int:

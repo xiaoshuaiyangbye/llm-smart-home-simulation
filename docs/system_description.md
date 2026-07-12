@@ -2,6 +2,8 @@
 
 This project is a local smart-home simulation platform for testing natural-language control flows and virtual environment feedback.
 
+> Retrieval summary: simulated smart-home devices include lights, air conditioner (AC), curtains, fans, windows, sensors, rooms, weather, comfort, and energy models.
+
 ## System Scope
 
 The system simulates rooms, virtual devices, outdoor conditions, comfort metrics, and energy use. It does not connect to real home devices and should not be used as production automation logic.

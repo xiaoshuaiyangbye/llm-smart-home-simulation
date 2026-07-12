@@ -2,6 +2,8 @@
 
 This project uses simplified comfort and energy metrics for software simulation. The configured thresholds are intended for repeatable local evaluation, not building design, inspection, certification, or health/safety decisions.
 
+> Retrieval summary: software-simulation comfort standards for indoor temperature, humidity, illuminance, energy use, target ranges, and task-completion evaluation.
+
 ## Config Files
 
 Thresholds and room/device parameters are stored in:

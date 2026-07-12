@@ -18,6 +18,10 @@ export default defineConfig({
       command: `"${python}" -m uvicorn app.main:app --app-dir ../backend --host 127.0.0.1 --port 8000`,
       url: "http://127.0.0.1:8000/health",
       reuseExistingServer: !process.env.CI,
+      // Browser flows exercise UI behavior; a real local model is verified by
+      // its dedicated reproducibility command and must not make parallel E2E
+      // workers contend for the Ollama service.
+      env: { ...process.env, LLM_MODE: "mock" },
     },
     {
       command: "npm run dev -- --host localhost --port 5173",
