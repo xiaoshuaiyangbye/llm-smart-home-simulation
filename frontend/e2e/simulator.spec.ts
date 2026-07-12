@@ -43,3 +43,9 @@ test("默认交互页面没有 WCAG A/AA 自动化违规", async ({ page }) => {
   const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(results.violations).toEqual([]);
 });
+
+test("后端状态请求失败时向用户显示连接错误", async ({ page }) => {
+  await page.route("**/api/state", (route) => route.abort("connectionfailed"));
+  await page.reload();
+  await expect(page.getByText(/无法连接后端服务/)).toBeVisible();
+});

@@ -23,6 +23,7 @@ export function StatePanel({ state, lastMessage }: StatePanelProps) {
       <section className="panel state-panel">
         <h2>状态面板</h2>
         <p>暂无状态数据</p>
+        {lastMessage && <div className="last-message" role="alert">{lastMessage}</div>}
       </section>
     );
   }
