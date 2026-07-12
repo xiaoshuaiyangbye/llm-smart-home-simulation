@@ -13,3 +13,7 @@ data/logs/*
 data/results/*
 !data/logs/.gitkeep
 !data/results/.gitkeep
+output/
+.playwright-cli/
+frontend/test-results/
+frontend/playwright-report/

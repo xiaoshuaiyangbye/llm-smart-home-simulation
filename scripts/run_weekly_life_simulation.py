@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 from app.experiments.logger import ExperimentLogger
 from app.experiments.task_runner import TaskRunner
-from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse
+from app.schemas.task_schema import AgentCommandRequest
 from app.schemas.state_schema import SmartHomeState
 from app.simulation.environment import SmartHomeEnvironment
 

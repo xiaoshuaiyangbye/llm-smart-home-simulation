@@ -1096,7 +1096,7 @@ def _render_report(
         f"- 生成时间：{summary['generated_at']}",
         f"- 语义模式：`{summary['llm_mode']}`",
         f"- 仿真范围：{summary['simulated_month_count']} 个代表月份，共 {summary['total_days']} 天",
-        f"- 生活轨迹：工作日上班、周末居家休息、每月 2 天生病/恢复需求",
+        "- 生活轨迹：工作日上班、周末居家休息、每月 2 天生病/恢复需求",
         "",
         "## 数据文件",
         "",

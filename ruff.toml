@@ -1,0 +1,5 @@
+[lint.per-file-ignores]
+# Experiment scripts must calculate PROJECT_ROOT and add backend/ to sys.path
+# before importing the application. Keep that bootstrap explicit while linting
+# every other rule in these scripts.
+"scripts/*.py" = ["E402"]

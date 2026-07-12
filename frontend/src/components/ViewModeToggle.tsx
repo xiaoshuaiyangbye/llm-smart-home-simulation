@@ -12,6 +12,7 @@ export function ViewModeToggle({ value, onChange, onReset }: ViewModeToggleProps
       <button
         type="button"
         className={value === "3d" ? "active" : ""}
+        aria-pressed={value === "3d"}
         onClick={() => onChange("3d")}
       >
         3D 俯瞰
@@ -19,6 +20,7 @@ export function ViewModeToggle({ value, onChange, onReset }: ViewModeToggleProps
       <button
         type="button"
         className={value === "2d" ? "active" : ""}
+        aria-pressed={value === "2d"}
         onClick={() => onChange("2d")}
       >
         2D 平面

@@ -41,6 +41,7 @@ def main() -> int:
     npm = shutil.which("npm.cmd") or shutil.which("npm") or "npm"
     checks = {
         "backend_lint": run([sys.executable, "-m", "ruff", "check", "app", "tests"], PROJECT_ROOT / "backend"),
+        "scripts_lint": run([sys.executable, "-m", "ruff", "check", "scripts"], PROJECT_ROOT),
         "backend_tests": run([sys.executable, "-m", "pytest", "-q"], PROJECT_ROOT / "backend"),
         "rag_evaluation": run([sys.executable, "../scripts/evaluate_rag.py", "--min-recall", "1.0"], PROJECT_ROOT / "backend"),
         "frontend_tests": run([npm, "test"], PROJECT_ROOT / "frontend"),
