@@ -14,6 +14,7 @@ from app.simulation.environment import SmartHomeEnvironment
 
 
 def main() -> int:
+    load_dotenv(BACKEND_ROOT / ".env.local")
     load_dotenv(BACKEND_ROOT / ".env")
     output_dir = PROJECT_ROOT / "data" / "results"
     output_dir.mkdir(parents=True, exist_ok=True)

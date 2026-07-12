@@ -135,6 +135,18 @@ Modes:
 
 Keep API keys only in `backend/.env`. Do not commit real credentials.
 
+### Local Ollama semantic parsing
+
+For a real local Ollama run, copy `backend/.env.local.example` to the ignored
+`backend/.env.local`. This file is loaded before `backend/.env`, so it safely
+overrides a remote development endpoint without changing the shared fallback.
+Set `REAL_LLM_MODEL_REVISION` to the digest returned by
+`http://127.0.0.1:11434/api/tags`; this makes experiment artifacts traceable to
+one immutable local model revision. The default local profile targets
+`qwen3:8b` through Ollama's OpenAI-compatible `http://127.0.0.1:11434/v1` endpoint.
+It disables streaming because the local OpenAI-compatible stream can otherwise
+end without content; semantic requests remain fully model-backed.
+
 For Docker deployment, keep API keys only in `deploy/backend.env`.
 
 Validate real LLM connectivity:

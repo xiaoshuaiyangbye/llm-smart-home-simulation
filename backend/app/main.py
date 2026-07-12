@@ -24,6 +24,7 @@ from app.simulation.life_simulation import LifeSimulationStartRequest, LifeSimul
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOG_DIR = PROJECT_ROOT / "data" / "logs"
 
+load_dotenv(PROJECT_ROOT / "backend" / ".env.local")
 load_dotenv(PROJECT_ROOT / "backend" / ".env")
 configure_logging()
 app = FastAPI(title="LLM Smart Home Simulation API", version="0.2.0")

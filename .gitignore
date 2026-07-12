@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 venv/
 .env
+backend/.env.local
 node_modules/
 dist/
 .vite/

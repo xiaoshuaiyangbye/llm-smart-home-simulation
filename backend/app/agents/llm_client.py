@@ -643,6 +643,7 @@ class RealLLMClient:
         self.api_key = os.getenv("REAL_LLM_API_KEY", "")
         self.base_url = os.getenv("REAL_LLM_BASE_URL", "https://spark-api-open.xf-yun.com/x2").rstrip("/")
         self.model = os.getenv("REAL_LLM_MODEL", "spark-x")
+        self.model_revision = os.getenv("REAL_LLM_MODEL_REVISION", "").strip() or None
         self.resource_id = os.getenv("REAL_LLM_RESOURCE_ID", "")
         self.timeout_seconds = float(os.getenv("REAL_LLM_TIMEOUT_SECONDS", "12"))
         self.max_tokens = int(os.getenv("REAL_LLM_MAX_TOKENS", "320"))
@@ -744,6 +745,7 @@ class RealLLMClient:
             "llm_mode": "real",
             "base_url": self.base_url,
             "model": self.model,
+            "model_revision": self.model_revision,
             "resource_id": self.resource_id,
             "timeout_seconds": self.timeout_seconds,
             "max_tokens": self.max_tokens,
@@ -1036,7 +1038,9 @@ class LLMClient:
         try:
             from dotenv import load_dotenv
 
-            env_path = Path(__file__).resolve().parents[2] / ".env"
+            backend_root = Path(__file__).resolve().parents[2]
+            load_dotenv(backend_root / ".env.local")
+            env_path = backend_root / ".env"
             load_dotenv(env_path if env_path.exists() else None)
         except Exception:
             pass

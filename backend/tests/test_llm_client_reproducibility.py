@@ -28,6 +28,7 @@ def test_real_client_sends_explicit_reproducible_decoding_controls(monkeypatch) 
     monkeypatch.setenv("REAL_LLM_API_KEY", "test-key")
     monkeypatch.setenv("REAL_LLM_BASE_URL", "http://localhost:11434/v1")
     monkeypatch.setenv("REAL_LLM_MODEL", "qwen3:8b")
+    monkeypatch.setenv("REAL_LLM_MODEL_REVISION", "sha256:immutable-local-model")
     monkeypatch.setenv("REAL_LLM_STREAM", "false")
     monkeypatch.setenv("REAL_LLM_TEMPERATURE", "0.0")
     monkeypatch.setenv("REAL_LLM_SEED", "1729")
@@ -40,3 +41,17 @@ def test_real_client_sends_explicit_reproducible_decoding_controls(monkeypatch) 
     assert isinstance(payload, dict)
     assert payload["temperature"] == 0.0
     assert payload["seed"] == 1729
+    assert client.model_revision == "sha256:immutable-local-model"
+
+
+def test_real_connection_reports_configured_model_revision(monkeypatch) -> None:
+    monkeypatch.setenv("REAL_LLM_API_KEY", "test-key")
+    monkeypatch.setenv("REAL_LLM_MODEL", "qwen3:8b")
+    monkeypatch.setenv("REAL_LLM_MODEL_REVISION", "sha256:immutable-local-model")
+    client = llm_client.RealLLMClient()
+    monkeypatch.setattr(client, "parse_command", lambda *_args, **_kwargs: {})
+
+    status = client.validate_connection(None)
+
+    assert status["success"] is True
+    assert status["model_revision"] == "sha256:immutable-local-model"
