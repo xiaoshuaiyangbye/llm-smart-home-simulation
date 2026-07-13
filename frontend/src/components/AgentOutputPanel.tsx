@@ -1,12 +1,13 @@
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 
-import type { AgentOutput } from "../types/state";
+import type { AgentOutput, AgentTraceStage } from "../types/state";
 
 interface AgentOutputPanelProps {
   command: string;
   onCommandChange: (command: string) => void;
   onSubmit: () => Promise<void>;
   output: AgentOutput | null;
+  liveStages: AgentTraceStage[];
   isLoading: boolean;
 }
 
@@ -17,6 +18,7 @@ type InspectorTab =
   | "planning"
   | "rag"
   | "agents"
+  | "a2a"
   | "safety"
   | "actions"
   | "feedback";
@@ -28,6 +30,7 @@ const TAB_LABELS: Record<InspectorTab, string> = {
   planning: "规划",
   rag: "RAG",
   agents: "协同",
+  a2a: "A2A 对话",
   safety: "安全",
   actions: "动作",
   feedback: "反馈",
@@ -38,6 +41,7 @@ export function AgentOutputPanel({
   onCommandChange,
   onSubmit,
   output,
+  liveStages,
   isLoading,
 }: AgentOutputPanelProps) {
   const [activeTab, setActiveTab] = useState<InspectorTab>("semantic");
@@ -53,6 +57,8 @@ export function AgentOutputPanel({
     semantic.multi_agent_blackboard ??
     planning.multi_agent_blackboard ??
     { status: "waiting" };
+  const traceBlackboard = liveStages.length > 0 ? { stages: liveStages } : blackboard;
+  const a2aMessages = useMemo(() => buildA2AMessages(traceBlackboard), [traceBlackboard]);
   const ragContext = semantic.rag_context ?? knowledgeResult.rag_context ?? { status: "waiting" };
   const llmMetrics = asRecord(semantic.llm_metrics);
   const promptTemplate = semantic.prompt_template ?? { status: "waiting" };
@@ -76,6 +82,10 @@ export function AgentOutputPanel({
   const safetyIssues = Array.isArray(safetyIssuesValue) ? safetyIssuesValue.length : 0;
   const canSubmit = command.trim().length > 0 && !isLoading;
 
+  useEffect(() => {
+    if (isLoading && liveStages.length === 0) setActiveTab("a2a");
+  }, [isLoading, liveStages.length]);
+
   const inspectorValue = useMemo(() => {
     if (activeTab === "prompt") {
       return {
@@ -88,12 +98,14 @@ export function AgentOutputPanel({
     if (activeTab === "planning") return output?.planning_result ?? { status: "waiting" };
     if (activeTab === "rag") return ragContext;
     if (activeTab === "agents") return blackboard;
+    if (activeTab === "a2a") return a2aMessages;
     if (activeTab === "safety") return Object.keys(safetyReview).length > 0 ? safetyReview : { status: "waiting" };
     if (activeTab === "actions") return actions;
     return output?.feedback_result ?? { status: "waiting" };
   }, [
     activeTab,
     actions,
+    a2aMessages,
     blackboard,
     memoryContext,
     output,
@@ -206,12 +218,44 @@ export function AgentOutputPanel({
           ))}
         </div>
         <div className="inspector-title">
-          <h3>{TAB_LABELS[activeTab]} JSON</h3>
+          <h3>{activeTab === "a2a" ? "A2A 风格消息轨迹" : `${TAB_LABELS[activeTab]} JSON`}</h3>
           {activeTab === "actions" && <span>{actions.length} 个动作</span>}
         </div>
-        <pre>{JSON.stringify(inspectorValue, null, 2)}</pre>
+        {activeTab === "a2a" ? <A2ADialog messages={a2aMessages} isLive={isLoading} /> : <pre>{JSON.stringify(inspectorValue, null, 2)}</pre>}
       </div>
     </section>
+  );
+}
+
+interface A2AMessage {
+  id: string;
+  sender: string;
+  recipient: string;
+  summary: string;
+  timestamp: string;
+  payload: Record<string, unknown>;
+}
+
+function A2ADialog({ messages, isLive }: { messages: A2AMessage[]; isLive: boolean }) {
+  if (messages.length === 0) {
+    return <p className="a2a-empty">等待一次任务执行后生成协作消息轨迹。</p>;
+  }
+
+  return (
+    <div className="a2a-dialog" aria-label="中心编排的 A2A 风格消息轨迹">
+      <p className="a2a-disclaimer">中心编排消息记录，不代表去中心化 A2A 协议。</p>
+      {isLive && <p className="a2a-live" role="status">正在实时接收 agent 消息…</p>}
+      {messages.map((message) => (
+        <details className="a2a-message" key={message.id}>
+          <summary>
+            <span className="a2a-route">{message.sender} → {message.recipient}</span>
+            <span>{message.summary}</span>
+          </summary>
+          <div className="a2a-message-meta">{message.timestamp || "当前任务"}</div>
+          <pre>{JSON.stringify(message.payload, null, 2)}</pre>
+        </details>
+      ))}
+    </div>
   );
 }
 
@@ -243,4 +287,97 @@ function formatLlmStatus(mode: unknown, metrics: Record<string, unknown>): strin
   if (stream === true) parts.push("stream");
   if (cacheHit === true) parts.push("cache");
   return parts.join(" / ");
+}
+
+function buildA2AMessages(blackboard: unknown): A2AMessage[] {
+  const stages = asRecord(blackboard).stages;
+  if (!Array.isArray(stages)) return [];
+
+  return stages.flatMap((stage, index) => {
+    const stageRecord = asRecord(stage);
+    const sender = typeof stageRecord.agent === "string" ? stageRecord.agent : "unknown_agent";
+    const payload = asRecord(stageRecord.output);
+    if (!sender || Object.keys(payload).length === 0) return [];
+    return [{
+      id: `${sender}-${index}`,
+      sender: displayAgentName(sender),
+      recipient: displayAgentName(nextRecipient(sender)),
+      summary: summarizeAgentMessage(sender, payload),
+      timestamp: typeof stageRecord.recorded_at === "string" ? stageRecord.recorded_at : "",
+      payload,
+    }];
+  });
+}
+
+function nextRecipient(agent: string): string {
+  const recipients: Record<string, string> = {
+    orchestrator: "context_agent",
+    context_agent: "semantic_agent",
+    knowledge_agent: "semantic_agent",
+    semantic_agent: "planning_agent",
+    comfort_agent: "collaboration_agent",
+    energy_agent: "collaboration_agent",
+    planning_agent: "collaboration_agent",
+    collaboration_agent: "safety_agent",
+    safety_agent: "critic_agent",
+    critic_agent: "execution_agent",
+    execution_agent: "feedback_agent",
+    feedback_agent: "orchestrator",
+  };
+  return recipients[agent] ?? "orchestrator";
+}
+
+function displayAgentName(agent: string): string {
+  const names: Record<string, string> = {
+    orchestrator: "编排器",
+    context_agent: "上下文 Agent",
+    knowledge_agent: "知识 Agent",
+    semantic_agent: "语义 Agent",
+    comfort_agent: "舒适度 Agent",
+    energy_agent: "能耗 Agent",
+    planning_agent: "规划 Agent",
+    collaboration_agent: "协作 Agent",
+    safety_agent: "安全 Agent",
+    critic_agent: "批评 Agent",
+    execution_agent: "执行 Agent",
+    feedback_agent: "反馈 Agent",
+  };
+  return names[agent] ?? agent;
+}
+
+function summarizeAgentMessage(agent: string, payload: Record<string, unknown>): string {
+  if (agent === "orchestrator") {
+    return `已加载 ${String(payload.room_count ?? "-")} 个房间与 ${String(payload.device_count ?? "-")} 台设备`;
+  }
+  if (agent === "semantic_agent") {
+    return `识别意图：${String(payload.intent ?? "未知")}；房间：${String(payload.room ?? "未知")}`;
+  }
+  if (agent === "knowledge_agent") {
+    return `检索到 ${String(getNested(payload.rag_context, "match_count") ?? 0)} 条知识匹配`;
+  }
+  if (agent === "comfort_agent") {
+    return `完成 ${String(payload.target_room_count ?? 0)} 个目标房间的舒适度审查`;
+  }
+  if (agent === "energy_agent") {
+    return `发现 ${Array.isArray(payload.waste_candidates) ? payload.waste_candidates.length : 0} 个潜在能耗项`;
+  }
+  if (agent === "planning_agent") {
+    return `生成 ${Array.isArray(payload.actions) ? payload.actions.length : 0} 个候选动作`;
+  }
+  if (agent === "collaboration_agent") {
+    return payload.phase === "critic_revision" ? "处理批评 Agent 的修订请求" : "整合专长 Agent 的计划建议";
+  }
+  if (agent === "safety_agent") {
+    return `安全审查：${Array.isArray(payload.issues) ? payload.issues.length : 0} 个风险，${payload.actions_changed ? "已调整动作" : "无需调整"}`;
+  }
+  if (agent === "critic_agent") {
+    return `批评审查：${payload.approved ? "通过" : "需要关注"}，${Array.isArray(payload.revision_requests) ? payload.revision_requests.length : 0} 个修订请求`;
+  }
+  if (agent === "execution_agent") {
+    return `已执行 ${String(payload.executed_count ?? 0)} 个动作`;
+  }
+  if (agent === "feedback_agent") {
+    return payload.completed ? "目标已达成" : "反馈要求继续校正或收敛";
+  }
+  return "已记录阶段输出";
 }

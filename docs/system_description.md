@@ -1,63 +1,50 @@
-# System Description
+# 系统说明
 
-This project is a local smart-home simulation platform for testing natural-language control flows and virtual environment feedback.
+本项目是用于自然语言控制与环境反馈研究的本地智能家居数字孪生仿真平台。
 
-> Retrieval summary: simulated smart-home devices include lights, air conditioner (AC), curtains, fans, windows, sensors, rooms, weather, comfort, and energy models.
+> 系统模拟灯光、空调、窗帘、风扇、窗户、传感器、房间、天气、舒适度与能耗模型；不直接连接真实全屋家居设备。
 
-## System Scope
+**RAG 检索关键词：** devices air conditioner（设备、空调）。
 
-The system simulates rooms, virtual devices, outdoor conditions, comfort metrics, and energy use. It does not connect to real home devices and should not be used as production automation logic.
+## 系统范围
 
-## Components
+系统在虚拟空间中模拟房间、设备、室外条件、舒适度和能耗。它适合原型验证与可重复实验，不应直接作为生产自动化逻辑、建筑设计、工程验收或健康安全决策。
 
-- `backend/app/main.py`: FastAPI application and API routes.
-- `backend/app/simulation/`: device, lighting, thermal, humidity, weather, energy, and comfort models.
-- `backend/app/agents/`: semantic parsing, planning, execution, feedback, and context memory.
-- `backend/app/experiments/`: orchestration, logging, batch runs, and evaluation utilities.
-- `frontend/src/`: React UI, API client, state types, panels, and 3D scene.
-- `deploy/`: Docker Compose, Nginx, and cloud deployment environment templates.
-- `scripts/`: startup, validation, and experiment entry points.
+## 主要模块
 
-## Environment Model
+- `backend/app/main.py`：FastAPI 应用与 API 路由。
+- `backend/app/simulation/`：设备、照明、热、湿度、天气、能耗和舒适度模型。
+- `backend/app/agents/`：语义解析、规划、执行、反馈、上下文和多智能体协作。
+- `backend/app/rag/`：本地知识索引、词法/本地嵌入混合检索和缓存校验。
+- `backend/app/experiments/`：编排、日志、批量运行与评估工具。
+- `frontend/src/`：React 界面、API 客户端、状态类型、控制面板和 3D 场景。
+- `deploy/`：Docker Compose、Nginx 和部署环境变量模板。
+- `scripts/`：启动、验证、评估和实验入口。
 
-The simulated home contains multiple rooms with:
+## 环境与设备模型
 
-- lighting level
-- temperature
-- humidity
-- occupancy
-- active scenario
-- device state
+每个虚拟房间包含照度、温度、湿度、人员占用、活动场景和设备状态。虚拟设备包括灯光、窗帘、空调、风扇、窗户和传感器；室外状态包括天气、时间、照度、太阳辐射、温湿度。在线天气不可用时，后端使用本地生成曲线。
 
-Virtual devices include lights, curtains, air conditioners, fans, windows, and sensors. Outdoor state includes weather, time, illuminance, solar radiation, temperature, and humidity. When online weather data is unavailable, the backend falls back to local generated weather curves.
+## 智能体闭环
 
-## Agent Workflow
+`TaskRunner` 是核心编排器。它先完成语义解析与本地知识检索，再结合舒适度、能耗、安全与批评审查生成计划，随后执行虚拟设备动作并进行反馈评估。反馈不满足时最多进行 3 轮校正，以保证运行可预测、日志可审计。
 
-`TaskRunner` is the central orchestrator. It calls:
+大模型主要用于语义解析；规划、执行、反馈和校正仍以可解释的确定性程序逻辑为主。因此，`mock` 模式可作为稳定基线，`real` 模式则需要单独记录模型版本、环境与原始实验产物。
 
-1. `SemanticAgent`
-2. `PlanningAgent`
-3. `ExecutionAgent`
-4. `FeedbackAgent`
+## 数据、指标与复现
 
-The feedback stage can trigger correction actions, with at most 3 correction rounds. The LLM path is configurable and mainly used for semantic parsing; downstream planning and control are deterministic rules.
+后端可在 `data/results/` 下写入 CSV、JSON 和 Markdown 报告。常见指标包括意图/房间识别、选择设备、动作数量、完成状态、校正次数、响应时延、能耗与舒适度分数。
 
-## Data and Metrics
+确定性研究运行时会记录种子、初始状态哈希、语义输入指纹、规划/执行事件、工具调用、状态差异和 JSONL 日志；可通过 `scripts/replay_research_log.py` 回放。架构和回放契约见 [research_runtime_architecture.md](research_runtime_architecture.md)。
 
-The backend can write CSV logs and JSON/Markdown reports under `data/results/`. These generated files are ignored by Git.
+## 研究边界
 
-Common metrics include:
+环境、能耗、照明、湿度与舒适度是轻量化近似模型。它们支持受控的软件比较，却不替代真实建筑物理、已校准传感器、现场安全系统或生产级设备集成。相关阈值的使用范围见 [national_standards_basis.md](national_standards_basis.md)，真实设备的验收条件见 [field_validation_protocol.md](field_validation_protocol.md)。
 
-- intent recognition result
-- room and scope recognition result
-- selected devices
-- action count
-- completion status
-- feedback correction count
-- response latency
-- energy use
-- comfort score
+本地质量门禁可运行：
 
-## Limitations
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\run_quality_loop.py
+```
 
-The simulation models are intentionally lightweight. They are useful for prototyping and repeatable tests, but they do not replace real building physics, calibrated sensors, safety systems, or production-grade device integrations.
+它会把验证证据与后续建议写入 `data/results/quality/`，不会自动修改源码、部署或发布。

@@ -1,11 +1,14 @@
 import os
 import secrets
+import json
+from queue import Empty, Queue
+from threading import Thread
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
@@ -262,6 +265,51 @@ def run_agent_command(request: AgentCommandRequest, runtime: SimulationRuntime =
             preference_service=runtime.preference_service,
             robustness_config=runtime.robustness_config,
         )
+
+
+@app.post("/api/agent/command/stream")
+def stream_agent_command(request: AgentCommandRequest, runtime: SimulationRuntime = Depends(get_runtime)) -> StreamingResponse:
+    """Stream real-time role-stage records for the current center-orchestrated run.
+
+    This is an SSE transport for the local UI.  Events describe actual
+    blackboard stages; they do not claim a decentralized A2A protocol.
+    """
+
+    events: Queue[tuple[str, dict]] = Queue()
+
+    def run_command() -> None:
+        try:
+            with runtime.lock:
+                response = runtime.task_runner.run_agent_command(
+                    request,
+                    preference_service=runtime.preference_service,
+                    robustness_config=runtime.robustness_config,
+                    event_callback=lambda stage: events.put(("stage", stage)),
+                )
+            events.put(("complete", response.model_dump(mode="json")))
+        except Exception as exc:  # Defensive boundary for errors outside TaskRunner's response envelope.
+            events.put(("error", {"message": str(exc)}))
+
+    def encode(event: str, payload: dict) -> str:
+        return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
+
+    def event_stream():
+        worker = Thread(target=run_command, name="agent-command-stream", daemon=True)
+        worker.start()
+        yield encode("started", {"transport": "sse", "architecture": "center_orchestrated"})
+        while worker.is_alive() or not events.empty():
+            try:
+                event, payload = events.get(timeout=0.25)
+            except Empty:
+                continue
+            yield encode(event, payload)
+        worker.join(timeout=0)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/simulation/step", response_model=SmartHomeState)

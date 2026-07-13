@@ -49,3 +49,17 @@ test("后端状态请求失败时向用户显示连接错误", async ({ page }) 
   await page.reload();
   await expect(page.getByText(/无法连接后端服务/)).toBeVisible();
 });
+
+test("提交指令时展示中心编排的实时协作轨迹", async ({ page }) => {
+  await page.getByLabel("指令输入").fill("打开客厅灯光");
+  const streamResponse = page.waitForResponse((response) => (
+    response.url().endsWith("/api/agent/command/stream") && response.request().method() === "POST"
+  ));
+  await page.getByRole("button", { name: "发送指令" }).click();
+  expect((await streamResponse).ok()).toBe(true);
+
+  await page.getByRole("tab", { name: "A2A 对话" }).click();
+  await expect(page.getByText("中心编排消息记录，不代表去中心化 A2A 协议。")).toBeVisible();
+  await expect(page.getByText(/编排器 → 上下文 Agent/)).toBeVisible();
+  await expect(page.getByText(/协作 Agent → 安全 Agent/)).toBeVisible();
+});

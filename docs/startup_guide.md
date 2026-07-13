@@ -1,49 +1,42 @@
-# Startup Guide
+# 启动指南
 
-This guide explains how to run the project with Docker by default, plus the
-legacy local development commands when needed.
+本指南默认使用 Docker Compose 启动，也保留本地前后端开发方式。
 
-## Prerequisites
+## 前置条件
 
-- Docker Desktop for the default one-command startup.
-- Python 3.11+, Node.js 18+, and npm only when running the legacy local development commands.
+- 推荐路径：已安装并启动 Docker Desktop。
+- 本地开发路径：Python 3.11+、Node.js 18+ 和 npm。
 
-## One-Command Docker Startup
+## 一键 Docker 启动
 
-From the project root:
+在项目根目录执行：
 
 ```powershell
 .\start.ps1
 ```
 
-You can also double-click `start.bat` on Windows. The launcher creates
-`deploy/.env` and `deploy/backend.env` from their examples when needed, runs
-`docker compose up -d --build`, waits for `http://localhost/health`, and opens:
+或双击 `start.bat`。脚本会在缺失时由示例文件创建 `deploy/.env` 与 `deploy/backend.env`，运行 `docker compose up -d --build`，等待 `http://localhost/health` 就绪，然后打开：
 
 ```text
 http://localhost
 ```
 
-Docker Desktop must be installed and running.
+Docker Desktop 必须处于运行状态。
 
-## Local Development Backend
+## 本地后端开发
 
 ```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env
+Copy-Item .env.example .env
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Check:
+检查：`http://localhost:8000/health`
 
-```text
-http://localhost:8000/health
-```
-
-## Local Development Frontend
+## 本地前端开发
 
 ```powershell
 cd frontend
@@ -51,116 +44,56 @@ npm install
 npm run dev
 ```
 
-Open:
+访问：`http://localhost:5173`
 
-```text
-http://localhost:5173
-```
+## 手动 Docker 命令
 
-## Manual Docker Commands
-
-The same Docker Compose files are used by `start.ps1` and on cloud servers:
-
-```bash
-cp deploy/backend.env.example deploy/backend.env
-cp deploy/.env.example deploy/.env
+```powershell
+Copy-Item deploy\backend.env.example deploy\backend.env
+Copy-Item deploy\.env.example deploy\.env
 cd deploy
 docker compose up -d --build
 ```
 
-To stop the Docker deployment:
+停止服务：
 
-```bash
+```powershell
 cd deploy
 docker compose down
 ```
 
-The old local development scripts are still available when you specifically
-need hot-reload debugging without containers:
+旧的热更新脚本仍可用于排障：
 
 ```powershell
 .\scripts\start_backend.ps1
 .\scripts\start_frontend.ps1
 ```
 
-In VS Code, press `Ctrl+Shift+B` and choose:
+在 VS Code 中按 `Ctrl+Shift+B`，选择“启动智能家居仿真实验平台”。
 
-```text
-启动智能家居仿真实验平台
-```
+## 环境变量与模型模式
 
-## Cloud Deployment
+Docker 使用 `deploy/backend.env`；本地非 Docker 开发使用 `backend/.env`。默认建议使用 `LLM_MODE=mock`，获得确定性的本地语义基线；仅在已配置兼容端点、模型名和凭据时使用 `LLM_MODE=real`。
 
-For cloud servers, use the same Docker Compose files in `deploy/`:
+若验证 Docker 服务中的本地 Ollama，实验命令应显式指定 `--env-file deploy\backend.env`，避免主机环境与服务环境不一致。运行前将不可变 Ollama 模型摘要记录到 `REAL_LLM_MODEL_REVISION`；没有版本绑定的真实模型运行不能作为版本特定性能证据。
 
-```bash
-cp deploy/backend.env.example deploy/backend.env
-cp deploy/.env.example deploy/.env
-cd deploy
-docker compose up -d --build
-```
-
-The frontend container exposes port `80` and proxies API traffic to the backend
-container. This matches the default one-command startup path.
-
-More details:
-
-```text
-docs/cloud_deployment.md
-```
-
-## Environment Variables
-
-Docker mode uses `deploy/backend.env`, created automatically by `start.ps1`
-from `deploy/backend.env.example`. Local development without Docker uses
-`backend/.env`.
-
-```env
-APP_ENV=local
-LLM_MODE=mock
-BACKEND_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-REAL_LLM_API_KEY=
-REAL_LLM_BASE_URL=
-REAL_LLM_MODEL=
-REAL_LLM_MODEL_REVISION=
-REAL_LLM_RESOURCE_ID=
-REAL_LLM_TIMEOUT_SECONDS=12
-REAL_LLM_MAX_TOKENS=600
-REAL_LLM_STREAM=true
-```
-
-Use `LLM_MODE=mock` for deterministic local tests. Use `LLM_MODE=real` only after configuring a compatible chat completion endpoint and API key.
-
-The personalization ablation defaults to `backend/.env`. When validating the
-Docker-served local model, pass `--env-file deploy/backend.env`; otherwise the
-host-side experiment may not use the same semantic endpoint/model as the live
-service. Record the immutable Ollama digest in `REAL_LLM_MODEL_REVISION` before
-making a version-specific model claim.
-
-## Validation
+## 验证命令
 
 ```powershell
-python scripts\verify_real_llm.py
-python scripts\run_batch_experiments.py --limit 5
-python scripts\run_reproduction_experiments.py --limit 3 --real-mode mock
+.\backend\.venv\Scripts\python.exe scripts\verify_real_llm.py
+.\backend\.venv\Scripts\python.exe scripts\run_batch_experiments.py --limit 5
+.\backend\.venv\Scripts\python.exe scripts\run_reproduction_experiments.py --limit 3 --real-mode mock
+.\backend\.venv\Scripts\python.exe scripts\run_quality_loop.py
 ```
 
-Generated files are written under:
+日志与结果写入 `data/logs/`、`data/results/`；除 `.gitkeep` 外通常不会提交。
 
-```text
-data/logs/
-data/results/
-```
+## 常见问题
 
-These folders are ignored by Git except for `.gitkeep` files.
-
-## Common Issues
-
-- Docker engine not running: start Docker Desktop, wait until it is ready, then run `start.bat` again.
-- Docker Hub pull timeout or `failed to fetch oauth token`: edit `deploy/.env` and set `DOCKER_HUB_PREFIX=m.daocloud.io/docker.io/library/`, then run `start.bat` again.
-- Port `80` already in use: edit `deploy/.env` and set `FRONTEND_PORT` to another value such as `8080`.
-- Frontend cannot load state in Docker mode: confirm `http://localhost/health` works and the backend container is healthy.
-- Backend connection failed in local development mode: confirm port `8000` is running.
-- Frontend cannot load state in local development mode: confirm `VITE_API_BASE_URL` or default `http://localhost:8000`.
-- Real LLM validation failed: check `.env`, endpoint URL, model name, API key, and provider response format.
-- No experiment output: check that the selected task JSON exists under `data/tasks/`.
+- Docker 引擎未运行：启动 Docker Desktop，确认其就绪后重新运行 `start.bat` 或 `start.ps1`。
+- 镜像拉取超时：在 `deploy/.env` 设置 `DOCKER_HUB_PREFIX=m.daocloud.io/docker.io/library/` 后重试。
+- 80 端口占用：在 `deploy/.env` 将 `FRONTEND_PORT` 改为例如 `8080`。
+- Docker 前端不能加载状态：先确认 `http://localhost/health` 可访问、后端容器健康。
+- 本地前端不能加载状态：确认后端 8000 端口运行，且 `VITE_API_BASE_URL` 配置正确。
+- 真实模型验证失败：检查环境文件、端点 URL、模型名、模型服务、密钥和返回格式；不要在日志或仓库中输出真实密钥。
+- 没有实验输出：确认 `data/tasks/` 中的任务 JSON 存在，且命令使用了正确的环境文件。

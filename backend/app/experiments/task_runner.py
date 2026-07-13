@@ -1,8 +1,9 @@
 from copy import deepcopy
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from app.agents.blackboard import MultiAgentBlackboard
+from app.agents.collaboration_agent import CollaborationAgent
 from app.agents.comfort_agent import ComfortAgent
 from app.agents.context_memory import UserContextMemory
 from app.agents.critic_agent import CriticAgent
@@ -62,6 +63,7 @@ class TaskRunner:
         self.semantic_agent = SemanticAgent(llm_client)
         self.knowledge_agent = KnowledgeAgent(self.rag_store)
         self.comfort_agent = ComfortAgent()
+        self.collaboration_agent = CollaborationAgent()
         self.energy_agent = EnergyAgent()
         self.planning_agent = PlanningAgent()
         self.safety_agent = SafetyAgent()
@@ -85,9 +87,10 @@ class TaskRunner:
         preference_service: UserPreferenceService | None = None,
         evaluation_preference_service: UserPreferenceService | None = None,
         robustness_config: RobustnessConfig | None = None,
+        event_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> AgentCommandResponse:
         try:
-            blackboard = MultiAgentBlackboard(request.user_command)
+            blackboard = MultiAgentBlackboard(request.user_command, on_stage=event_callback)
             current_state = self.environment.get_state(refresh_realtime=self.refresh_realtime)
             blackboard.add_stage(
                 "orchestrator",
@@ -187,6 +190,21 @@ class TaskRunner:
             if self.experiment_safety_fault:
                 plan_result = self._inject_experiment_safety_fault(plan_result)
             blackboard.add_stage("planning_agent", plan_result)
+            collaboration_result = (
+                self.collaboration_agent.coordinate(plan_result, comfort_result, energy_result)
+                if self.enable_multi_agent_review
+                else {
+                    "agent": "collaboration_agent",
+                    "phase": "specialist_proposal_reconciliation",
+                    "enabled": False,
+                    "plan_result": plan_result,
+                }
+            )
+            plan_result = collaboration_result["plan_result"]
+            blackboard.add_stage(
+                "collaboration_agent",
+                {key: value for key, value in collaboration_result.items() if key != "plan_result"},
+            )
             safety_result = (
                 self.safety_agent.review(semantic_result, plan_result, knowledge_result)
                 if self.enable_multi_agent_review
@@ -216,12 +234,41 @@ class TaskRunner:
                 if self.enable_multi_agent_review
                 else {"agent": "critic_agent", "approved": True, "enabled": False}
             )
+            critic_result["review_round"] = 1
+            revision_result = (
+                self.collaboration_agent.apply_critic_revision(plan_result, critic_result)
+                if self.enable_multi_agent_review
+                else {
+                    "agent": "collaboration_agent",
+                    "phase": "critic_revision",
+                    "actions_changed": False,
+                    "revision_decisions": [],
+                    "plan_result": plan_result,
+                }
+            )
+            if revision_result["actions_changed"]:
+                first_critic_result = deepcopy(critic_result)
+                plan_result = revision_result["plan_result"]
+                safety_result = self.safety_agent.review(semantic_result, plan_result, knowledge_result)
+                plan_result["actions"] = safety_result.get("actions", plan_result.get("actions", []))
+                critic_result = self.critic_agent.review(
+                    semantic_result,
+                    plan_result,
+                    safety_result,
+                    comfort_result,
+                    energy_result,
+                    knowledge_result,
+                )
+                critic_result["review_round"] = 2
+                critic_result["prior_review"] = first_critic_result
+            critic_result["revision"] = {key: value for key, value in revision_result.items() if key != "plan_result"}
             plan_result["multi_agent_context"] = {
                 "knowledge_result": knowledge_result,
                 "comfort_result": comfort_result,
                 "energy_result": energy_result,
                 "safety_result": safety_result,
                 "critic_result": critic_result,
+                "collaboration_result": {key: value for key, value in collaboration_result.items() if key != "plan_result"},
             }
             blackboard.add_stage("safety_agent", safety_result)
             blackboard.add_stage("critic_agent", critic_result)

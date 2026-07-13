@@ -175,6 +175,12 @@ export interface AgentOutput {
   multi_agent_blackboard?: Record<string, unknown>;
 }
 
+export interface AgentTraceStage {
+  agent: string;
+  recorded_at: string;
+  output: Record<string, unknown>;
+}
+
 export interface TaskResponse {
   experiment_id: string;
   user_command: string;

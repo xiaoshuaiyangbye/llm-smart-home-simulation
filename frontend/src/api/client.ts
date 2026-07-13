@@ -2,6 +2,7 @@ import type {
   DeviceActionRequest,
   DeviceActionResponse,
   AgentCommandResponse,
+  AgentTraceStage,
   AgentHealth,
   AuthStatus,
   EnergyState,
@@ -206,6 +207,67 @@ export async function submitTask(userCommand: string, currentRoomId?: string): P
       multi_agent_blackboard: response.multi_agent_blackboard,
     },
     state: response.final_state,
+    error: null,
+  };
+}
+
+export async function submitTaskWithTrace(
+  userCommand: string,
+  currentRoomId: string | undefined,
+  onStage: (stage: AgentTraceStage) => void,
+): Promise<TaskResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/agent/command/stream`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Simulation-Session": getSessionId(),
+    },
+    body: JSON.stringify({ user_command: userCommand, current_room_id: currentRoomId }),
+  });
+  if (!response.ok || !response.body) {
+    throw new Error(`Unable to open live agent trace (${response.status}).`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let completed: AgentCommandResponse | null = null;
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    const frames = buffer.split("\n\n");
+    buffer = frames.pop() ?? "";
+    for (const frame of frames) {
+      const event = frame.match(/^event: (.+)$/m)?.[1];
+      const data = frame.match(/^data: (.+)$/m)?.[1];
+      if (!event || !data) continue;
+      const payload = JSON.parse(data) as unknown;
+      if (event === "stage") onStage(payload as AgentTraceStage);
+      if (event === "complete") completed = payload as AgentCommandResponse;
+      if (event === "error") {
+        const message = typeof payload === "object" && payload ? (payload as { message?: unknown }).message : undefined;
+        throw new Error(typeof message === "string" ? message : "Live agent trace failed.");
+      }
+    }
+    if (done) break;
+  }
+  if (!completed || !completed.success || !completed.final_state) {
+    throw new Error(completed?.error ?? "Live agent trace ended without a successful result.");
+  }
+  return {
+    experiment_id: "local-demo",
+    user_command: userCommand,
+    success: true,
+    agent_output: {
+      semantic_result: completed.semantic_result,
+      planning_result: completed.plan_result,
+      execution_result: completed.execution_result,
+      feedback_result: completed.feedback_result,
+      actions: Array.isArray(completed.plan_result.actions) ? completed.plan_result.actions : [],
+      multi_agent_blackboard: completed.multi_agent_blackboard,
+    },
+    state: completed.final_state,
     error: null,
   };
 }

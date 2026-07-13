@@ -1,0 +1,23 @@
+{
+  "schema_version": "semantic_annotation_review_v1",
+  "task_suite_sha256": "replace-with-sha256-of-reproduction_tasks.json",
+  "reviewed_at": "2026-01-01T00:00:00Z",
+  "reviewers": [
+    {"reviewer_id": "reviewer-a", "independent_of_reference_author": true},
+    {"reviewer_id": "reviewer-b", "independent_of_reference_author": true}
+  ],
+  "task_reviews": [
+    {
+      "task_id": "P003",
+      "reviewer_labels": {
+        "reviewer-a": {"control_goal": "turn_on", "targets": {"illuminance_lux_range": [100, 500], "temperature_c_range": [20, 30]}},
+        "reviewer-b": {"control_goal": "set_target", "targets": {"illuminance_lux_range": [100, 500], "temperature_c_range": [20, 30]}}
+      },
+      "adjudication": {
+        "adjudicator_id": "review-chair",
+        "rationale": "Record the task wording, candidate interpretations, and why the final label is selected.",
+        "label": {"control_goal": "turn_on", "targets": {"illuminance_lux_range": [100, 500], "temperature_c_range": [20, 30]}}
+      }
+    }
+  ]
+}

@@ -1169,6 +1169,73 @@ input[type="range"] {
   padding: 16px 18px;
 }
 
+.a2a-dialog {
+  display: grid;
+  gap: 8px;
+  height: 252px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.a2a-disclaimer,
+.a2a-empty,
+.a2a-live,
+.a2a-message-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.a2a-live {
+  padding: 7px 10px;
+  border-radius: 5px;
+  background: #fff8df;
+  color: #796019;
+  font-weight: 750;
+}
+
+.a2a-disclaimer {
+  padding: 8px 10px;
+  border-left: 3px solid var(--teal);
+  border-radius: 5px;
+  background: #f0fffb;
+}
+
+.a2a-message {
+  border: 1px solid #dfe9ef;
+  border-radius: 8px;
+  background: #fbfdfe;
+}
+
+.a2a-message summary {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #274355;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.a2a-route {
+  color: var(--teal-strong);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.a2a-message-meta {
+  padding: 0 12px 8px;
+}
+
+.a2a-message pre {
+  height: auto;
+  max-height: 190px;
+  margin: 0 10px 10px;
+  padding: 10px;
+  font-size: 11px;
+}
+
 .json-block {
   padding: 10px;
 }

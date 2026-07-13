@@ -1,70 +1,68 @@
-# llm-smart-home-simulation
+# 大模型智能家居数字孪生仿真平台
 
-`llm-smart-home-simulation` is a local smart-home simulation platform for testing natural-language device control, rule-based planning, virtual device execution, and closed-loop environment feedback.
+这是一个可本地运行、可复现实验的智能家居数字孪生平台，用于研究自然语言设备控制、RAG 检索增强、大模型语义解析、虚拟设备执行与环境反馈闭环。
 
-The project does not control real home devices. It provides a reproducible software sandbox with a FastAPI backend, a React 3D frontend, virtual rooms/devices, energy and comfort models, and optional OpenAI-compatible LLM semantic parsing.
+## 项目定位与结论边界
 
-## Features
+本项目验证的是**软件仿真闭环**：用户指令进入智能体流程后，系统完成语义解析、规划、虚拟设备控制、环境演化与反馈校正。它适用于课程设计、科研原型、算法对比与可复现实验。
 
-- Backend: Python + FastAPI for state management, virtual device control, environment simulation, agent orchestration, and CSV log export.
-- Frontend: React + TypeScript + Vite + `@react-three/fiber` for a 3D smart-home control panel.
-- Agent flow: semantic parsing, task planning, action execution, feedback evaluation, and up to 3 correction rounds.
-- Multi-agent RAG flow: local knowledge retrieval, comfort analysis, energy review, safety review, critic review, execution, and feedback are written to an inspectable blackboard.
-- LLM mode: supports `mock` mode for deterministic local testing and `real` mode for an OpenAI-compatible chat completion endpoint.
-- Experiments: includes reusable batch tasks, reproduction experiments, life simulation scripts, and summary/report generation.
-- Safety: `.env`, runtime folders, dependency folders, build output, logs, and generated results are excluded from Git.
+项目不直接接入真实全屋设备，因此不能仅凭本仓库的测试或仿真结果，宣称真实设备控制安全性、实际节能效果或建筑工程合规性。
 
-## Project Layout
+与本软件平台配套的照明研究已具备实体实验基础：真实办公实验环境中的照度传感、控制器/PWM 调光、LED 驱动与反馈闭环可作为**照明子系统**的独立硬件验证证据。该证据不能自动外推为本项目所有虚拟设备均完成实体部署。详细验收口径见 [docs/field_validation_protocol.md](docs/field_validation_protocol.md)。
+
+## 主要能力
+
+- 后端：Python + FastAPI，管理仿真状态、虚拟设备、环境模型、智能体编排和 CSV 日志导出。
+- 前端：React + TypeScript + Vite，提供 2D/延迟加载 3D 智能家居控制界面。
+- 闭环控制：语义解析、任务规划、动作执行、环境更新、反馈评估，最多执行 3 轮校正。
+- 多智能体：知识检索、舒适度、能耗、安全、批评审查、执行与反馈结果写入可检查的黑板（blackboard）。
+- RAG：支持确定性词法检索，或使用本地 Ollama 嵌入模型的向量与词法混合检索；索引带内容指纹和校验和缓存。
+- 大模型：支持稳定可复现的 `mock` 模式，以及兼容 OpenAI API 的 `real` 模式；默认本地配置可使用 Ollama 的 `qwen3:8b`。
+- 实验：提供批量任务、复现实验、个性化消融、生命周期仿真、质量门禁和报告生成脚本。
+
+## 目录结构
 
 ```text
-backend/    FastAPI backend, simulation models, schemas, agents, and experiment runners
-frontend/   React/Vite frontend and 3D scene components
-deploy/     Docker Compose, Nginx, and cloud deployment environment templates
-scripts/    setup, startup, validation, and experiment scripts
-data/       sample task definitions; generated logs/results are ignored
-docs/       system, startup, collaboration, and standards notes
+backend/    FastAPI、仿真模型、智能体、RAG、测试与实验逻辑
+frontend/   React/Vite 前端、状态面板与 3D 场景
+deploy/     Docker Compose、Nginx 和部署环境变量模板
+scripts/    启动、验证、评估和实验脚本
+data/       任务定义；生成的日志与结果默认不提交
+docs/       中文系统说明、实验边界、运行与部署文档
 ```
 
-## Quick Start
+## 快速启动
 
-### One-click startup on Windows
+### Windows 一键启动（推荐）
 
-Double-click `start.bat`, or run this from the project root:
+确保 Docker Desktop 已启动后，在项目根目录执行：
 
 ```powershell
 .\start.ps1
 ```
 
-The launcher now uses the Docker Compose deployment path by default. It creates
-`deploy/.env` and `deploy/backend.env` from their examples when needed, builds
-and starts the backend and frontend containers, waits for the Nginx health
-check, then opens:
+也可以双击 `start.bat`。启动器会在缺失时从模板创建 `deploy/.env` 和 `deploy/backend.env`，构建并启动 Docker Compose 服务，等待健康检查后打开：
 
 ```text
 http://localhost
 ```
 
-Make sure Docker Desktop is installed and running before using the one-click
-launcher.
+完整说明见 [docs/startup_guide.md](docs/startup_guide.md)。
 
-### 1. Local development backend
+### 本地开发：后端
 
 ```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env
+Copy-Item .env.example .env
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Backend health check:
+健康检查：`http://localhost:8000/health`
 
-```text
-http://localhost:8000/health
-```
-
-### 2. Local development frontend
+### 本地开发：前端
 
 ```powershell
 cd frontend
@@ -72,45 +70,26 @@ npm install
 npm run dev
 ```
 
-Frontend URL:
+访问：`http://localhost:5173`
 
-```text
-http://localhost:5173
-```
+### 手动 Docker Compose
 
-### 3. Docker deployment
-
-The same Docker Compose stack is used locally and on a cloud server:
-
-```bash
-cp deploy/backend.env.example deploy/backend.env
-cp deploy/.env.example deploy/.env
+```powershell
+Copy-Item deploy\backend.env.example deploy\backend.env
+Copy-Item deploy\.env.example deploy\.env
 cd deploy
 docker compose up -d --build
 ```
 
-By default, the frontend container serves the React build on port `80` and
-proxies `/api/*` plus `/health` to the backend container. Local Python/Node
-scripts under `scripts/` are kept only as development utilities.
-
-If Docker Hub image pulls time out, set a mirror prefix in `deploy/.env`:
+Docker 模式下，前端容器默认监听 80 端口，并将 `/api/*` 与 `/health` 反向代理到后端。镜像拉取超时时，可在 `deploy/.env` 配置：
 
 ```env
 DOCKER_HUB_PREFIX=m.daocloud.io/docker.io/library/
 ```
 
-### 4. VS Code Task
+## 大模型与本地 Ollama
 
-Open the project in VS Code, press `Ctrl+Shift+B`, and choose:
-
-```text
-启动智能家居仿真实验平台
-```
-
-## LLM Configuration
-
-In Docker mode, the backend reads configuration from `deploy/backend.env`.
-For local development without Docker, it reads `backend/.env`.
+Docker 读取 `deploy/backend.env`；不使用 Docker 的本地开发读取 `backend/.env`。请勿提交真实密钥。
 
 ```env
 APP_ENV=local
@@ -120,235 +99,73 @@ REAL_LLM_API_KEY=
 REAL_LLM_BASE_URL=
 REAL_LLM_MODEL=
 REAL_LLM_MODEL_REVISION=
-REAL_LLM_RESOURCE_ID=
 REAL_LLM_TIMEOUT_SECONDS=12
 REAL_LLM_MAX_TOKENS=600
 REAL_LLM_STREAM=true
-API_AUTH_TOKEN=
-API_RATE_LIMIT_PER_MINUTE=120
 ```
 
-Modes:
+- `LLM_MODE=mock`：确定性本地语义解析，适合演示、测试与基线实验。
+- `LLM_MODE=real`：调用兼容 OpenAI Chat Completions 的真实模型服务。
 
-- `LLM_MODE=mock`: deterministic local semantic parsing, suitable for setup and demos.
-- `LLM_MODE=real`: calls an OpenAI-compatible HTTP endpoint for semantic parsing.
+如需真实本地 Ollama，请复制 `backend/.env.local.example` 为被 Git 忽略的 `backend/.env.local`。默认配置使用 `qwen3:8b` 解析语义、`qwen3-embedding:0.6b` 建立本地嵌入索引。请将 Ollama 返回的模型摘要写入 `REAL_LLM_MODEL_REVISION`，使实验结果能够绑定到不可变模型版本。
 
-Keep API keys only in `backend/.env`. Do not commit real credentials.
-
-### Local Ollama semantic parsing
-
-For a real local Ollama run, copy `backend/.env.local.example` to the ignored
-`backend/.env.local`. This file is loaded before `backend/.env`, so it safely
-overrides a remote development endpoint without changing the shared fallback.
-Set `REAL_LLM_MODEL_REVISION` to the digest returned by
-`http://127.0.0.1:11434/api/tags`; this makes experiment artifacts traceable to
-one immutable local model revision. The default local profile targets
-`qwen3:8b` through Ollama's OpenAI-compatible `http://127.0.0.1:11434/v1` endpoint.
-It disables streaming because the local OpenAI-compatible stream can otherwise
-end without content; semantic requests remain fully model-backed.
-If the local OpenAI-compatible endpoint itself returns an empty non-streaming
-message, the client retries through Ollama's native `/api/chat` endpoint for
-that local endpoint only. Each result records `llm_metrics.transport`, so
-`ollama_native_fallback` remains visible in experiment evidence rather than
-being mistaken for a normal OpenAI-compatible response.
-
-The local embedding index is persisted by default at `.runtime/rag_index.json`.
-It includes source-content fingerprints and an index checksum, so altered,
-corrupt, or configuration-incompatible caches are rebuilt rather than trusted.
-For a Docker deployment that must retain the cache across container recreation,
-set `RAG_INDEX_CACHE_PATH` to a mounted writable location. Inspect or evaluate
-retrieval with:
+本地嵌入索引默认保存在 `.runtime/rag_index.json`。其中包含源文件指纹与索引校验和；源文件、配置或缓存损坏发生变化时会安全重建。检查 RAG：
 
 ```powershell
 .\backend\.venv\Scripts\python.exe scripts\inspect_rag.py --reindex
 .\backend\.venv\Scripts\python.exe scripts\evaluate_rag.py --min-recall 1.0
 ```
 
-For Docker deployment, keep API keys only in `deploy/backend.env`.
-
-Validate real LLM connectivity:
+验证真实模型连通性：
 
 ```powershell
-python scripts\verify_real_llm.py
+.\backend\.venv\Scripts\python.exe scripts\verify_real_llm.py
 ```
 
-## Useful Scripts
-
-Run the deterministic research-runtime demo:
+## 常用实验命令
 
 ```powershell
+# 确定性研究运行时演示与回放
 .\backend\.venv\Scripts\python.exe scripts\run_research_demo.py
-```
-
-Replay a research JSONL log:
-
-```powershell
 .\backend\.venv\Scripts\python.exe scripts\replay_research_log.py data\logs\research_demo.jsonl
-```
 
-Run a small batch experiment:
+# 小批量任务与复现实验
+.\backend\.venv\Scripts\python.exe scripts\run_batch_experiments.py --limit 5
+.\backend\.venv\Scripts\python.exe scripts\run_reproduction_experiments.py --limit 3 --real-mode mock
 
-```powershell
-python scripts\run_batch_experiments.py --limit 5
-```
+# 个性化多目标消融实验
+.\backend\.venv\Scripts\python.exe scripts\run_personalization_experiments.py
 
-Run reproduction experiments:
-
-```powershell
-python scripts\run_reproduction_experiments.py --limit 3 --real-mode mock
-```
-
-For a versioned local-Ollama semantic benchmark against the Docker deployment,
-select its environment explicitly; the generated CSV/report records the model
-revision and non-secret runtime fingerprint, and an unversioned real run must
-not be read as version-specific performance evidence:
-
-```powershell
-.\backend\.venv\Scripts\python.exe scripts\run_reproduction_experiments.py `
-  --groups real_semantic_planning --limit 3 --real-mode real --env-file deploy\backend.env
-```
-
-Run a short life simulation:
-
-```powershell
-python scripts\run_weekly_life_simulation.py --duration day
-```
-
-Run seasonal life simulation:
-
-```powershell
-python scripts\run_seasonal_life_simulation.py
-```
-
-Generated logs and reports are written under `data/logs/` and `data/results/`, which are ignored by Git.
-
-### Real-device claim acceptance
-
-This is a simulation platform. Do not claim real-device control, safety, or
-energy-saving results from its software tests. When field evidence is available,
-copy `data/field_validation/field_validation_evidence.example.json`, attach a
-SHA-256 manifest to the raw artifact directory, and validate the completed
-record before making a real-world claim:
-
-```powershell
-.\backend\.venv\Scripts\python.exe scripts\verify_artifact_integrity.py create <artifact-directory>
-.\backend\.venv\Scripts\python.exe scripts\validate_field_validation_evidence.py <completed-evidence.json>
-```
-
-The validator requires isolated testing, tested rollback and emergency-stop
-procedures, device/firmware inventory, calibrated raw measurements, a baseline,
-and an intact artifact manifest. It is an acceptance gate, not a substitute for
-the required physical equipment and field run.
-
-## API Overview
-
-- `GET /health`: backend health check.
-- `GET /api/state`: current smart-home state.
-- `POST /api/agent/command`: run the semantic-planning-execution-feedback flow for a natural-language command.
-- `GET /api/rag/sources`: list indexed local RAG sources.
-- `POST /api/rag/reindex`: rebuild the local RAG index.
-- `POST /api/rag/query`: retrieve local knowledge chunks for a query.
-- `POST /api/state/reset`: reset the current simulation session state.
-- `GET /api/logs/export`: export CSV logs.
-
-## Production Safety and Continuous Improvement
-
-For every public deployment, set a strong `API_AUTH_TOKEN` in `deploy/backend.env`.
-The web app then presents an access-token screen and stores the validated token in
-an HTTP-only, strict same-site API cookie; API clients may instead send it in the
-`X-API-Key` header. The frontend also sends an `X-Simulation-Session` header so
-browser sessions have isolated simulation state.
-
-The repository runs a verification workflow for backend tests, frontend builds,
-dependency consistency, and high-severity npm advisories. The bounded discovery,
-verification, persistence, and stop rules used for follow-up improvements are in
-[`docs/loop_engineering.md`](docs/loop_engineering.md).
-
-Run the same bounded quality loop locally with:
-
-```powershell
+# 本地质量门禁
 .\backend\.venv\Scripts\python.exe scripts\run_quality_loop.py
 ```
 
-It records test/build evidence and deterministic follow-up recommendations under
-`data/results/quality/`; it never edits source or deploys automatically.
+生成的日志和报告位于 `data/logs/`、`data/results/` 与 `output/`，默认不会提交到 Git。真实模型实验应单独保存模型版本、环境配置指纹、任务集版本与原始结果；一次成功请求不是模型准确率、时延或并发能力的总体结论。
 
-## Personalized Multi-Objective Research Mode
+## 真实设备结论验收
 
-The research panel exposes a virtual resident's temperature, illuminance, and
-energy preferences plus deterministic sensor/actuator disturbances. The command
-pipeline adapts targets to the profile and logs comfort, energy, safety,
-stability, and estimated satisfaction as a multi-objective utility.
-
-Run the reproducible ablation set with:
+若要将某项结论表述为真实设备、现场安全或实际节能结果，必须复制并填写 `data/field_validation/field_validation_evidence.example.json`，为原始产物建立 SHA-256 清单，再执行：
 
 ```powershell
-.\backend\.venv\Scripts\python.exe scripts\run_personalization_experiments.py
+.\backend\.venv\Scripts\python.exe scripts\verify_artifact_integrity.py create <原始产物目录>
+.\backend\.venv\Scripts\python.exe scripts\validate_field_validation_evidence.py <完成的证据文件.json>
 ```
 
-For a versioned real local-Ollama semantic run against the Docker deployment,
-use its explicit runtime configuration rather than relying on host-shell
-variables. Set `REAL_LLM_MODEL_REVISION` to the immutable Ollama model digest
-and keep the resulting artifact separate from the default mock baseline:
+验收要求包括隔离环境、设备/固件清单、已验证的回滚和急停、校准传感器、基线策略、原始日志与完整产物清单。校验器只检查证据完整性，不会生成现场数据，也不会把仿真结果升级为实体实验结论。
 
-```powershell
-.\backend\.venv\Scripts\python.exe scripts\run_personalization_experiments.py `
-  --semantic-mode real --env-file deploy\backend.env
-```
+## API 概览
 
-## Multi-Agent + RAG Upgrade
+- `GET /health`：后端健康检查。
+- `GET /api/state`：获取当前仿真状态。
+- `POST /api/agent/command`：执行自然语言的语义—规划—执行—反馈流程。
+- `GET /api/rag/sources`：列出已索引的 RAG 源文件。
+- `POST /api/rag/reindex`：重建 RAG 索引。
+- `POST /api/rag/query`：检索本地知识片段。
+- `POST /api/state/reset`：重置当前仿真会话状态。
+- `GET /api/logs/export`：导出 CSV 日志。
 
-The default command path now keeps the original API shape while adding a richer
-multi-agent blackboard:
+## 质量与安全说明
 
-```text
-user command
--> context memory
--> KnowledgeAgent local RAG retrieval
--> SemanticAgent intent parsing
--> ComfortAgent state review
--> EnergyAgent waste review
--> PlanningAgent action generation
--> SafetyAgent action guardrails
--> CriticAgent plan review
--> ExecutionAgent virtual device execution
--> FeedbackAgent closed-loop evaluation
-```
+公开部署时，在 `deploy/backend.env` 中设置强 `API_AUTH_TOKEN`。浏览器通过 HTTP-only、严格 SameSite 的 Cookie 保存经验证的令牌；API 客户端也可使用 `X-API-Key`。`X-Simulation-Session` 用于隔离不同浏览器会话的仿真状态。
 
-RAG sources currently include `docs/*.md`, `backend/app/config/*.yaml`, and
-`data/tasks/*.json`. The built-in retriever uses deterministic local lexical
-vectors so the project runs without a separate vector database. You can later
-replace `backend/app/rag/document_store.py` with FAISS, Chroma, or a local
-embedding model while keeping the same `query()` interface.
-
-Run a RAG smoke query:
-
-```powershell
-python scripts\inspect_rag.py "sleep mode comfort energy safety" --top-k 5
-```
-
-Run baseline vs multi-agent RAG ablation:
-
-```powershell
-python scripts\run_multi_agent_rag_experiments.py --limit 5
-```
-
-Disable the upgraded review path for a batch run:
-
-```powershell
-python scripts\run_batch_experiments.py --limit 5 --disable-multi-agent
-```
-
-## Notes
-
-This project is intended for software simulation, prototyping, and reproducible experiments. The environment, energy, lighting, humidity, and comfort models are simplified approximations and should not be used as real building design, inspection, or home automation logic.
-
-## Research Runtime
-
-The repository now includes a deterministic, event-driven simulation runtime under `backend/app/runtime`, with modular `world`, `tools`, `memory`, and schema-validated structured agents. See `docs/research_runtime_architecture.md` for the architecture diagram, replay contract, and demo flow.
-
-Research API endpoints:
-
-- `POST /api/research/run`
-- `GET /api/research/logs`
-- `POST /api/research/replay`
+仓库的持续验证包括后端测试和 Ruff、前端 Vitest/生产构建、浏览器端到端测试、RAG 评测、依赖一致性与高危 npm 审计。改进闭环与停止规则见 [docs/loop_engineering.md](docs/loop_engineering.md)，历史证据见 [docs/improvement_backlog.md](docs/improvement_backlog.md)。

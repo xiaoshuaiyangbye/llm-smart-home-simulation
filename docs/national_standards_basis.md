@@ -1,12 +1,14 @@
-# Standards and Evaluation Notes
+# 标准阈值与评价依据说明
 
-This project uses simplified comfort and energy metrics for software simulation. The configured thresholds are intended for repeatable local evaluation, not building design, inspection, certification, or health/safety decisions.
+项目将室内舒适度与能耗的部分阈值映射为可重复的软件仿真参数。它们用于算法比较和本地实验，不是建筑设计、检测验收、认证或健康安全决策的正式依据。
 
-> Retrieval summary: software-simulation comfort standards for indoor temperature, humidity, illuminance, energy use, target ranges, and task-completion evaluation.
+> 软件中的温度、湿度、照度、能耗、目标区间和任务完成指标属于“标准启发的简化参数”，不等同于完整标准条文或现场测量方案。
 
-## Config Files
+**RAG 检索关键词：** comfort standards temperature（舒适度标准、温度）。
 
-Thresholds and room/device parameters are stored in:
+## 配置位置
+
+阈值与房间/设备参数位于：
 
 ```text
 backend/app/config/standards.yaml
@@ -14,21 +16,19 @@ backend/app/config/rooms.yaml
 backend/app/config/devices.yaml
 ```
 
-## Evaluation Areas
+## 评价范围
 
-- lighting comfort
-- thermal comfort
-- humidity comfort
-- energy use
-- task completion
-- feedback correction count
+- 照明舒适度
+- 热舒适度
+- 湿度舒适度
+- 模拟能耗
+- 任务完成状态
+- 反馈校正次数
 
-## Interpretation
+反馈智能体根据目标区间和当前仿真状态判断任务是否完成。温湿度可能需要多个仿真步收敛，因此应结合舒适度分数、最终房间状态和校正过程解释结果。
 
-The feedback agent uses target ranges and current environment state to determine whether a task has been completed. Temperature and humidity can require simulated convergence time, so completion status should be interpreted together with comfort scores and final room state.
+基线策略是确定性比较逻辑，可用于相对的软件实验；它们不是历史家庭用能数据，也不是实际电费或真实节能量估计。
 
-Baseline policies are implemented as deterministic comparison logic. They are useful for relative software experiments, but they are not historical household usage data or real utility-cost estimates.
+## 使用边界
 
-## Practical Boundary
-
-The platform maps standards-inspired thresholds into a simplified simulation model. It does not implement formal measurement procedures, sensor calibration, sampling plans, or engineering compliance checks.
+平台没有实现完整的正式测量流程、传感器校准、采样计划或工程合规检查。若论文或答辩涉及真实空间光环境、能耗或安全结论，必须补充对应标准的原文依据、经过校准的仪器、现场采样方案与原始数据，并通过 [field_validation_protocol.md](field_validation_protocol.md) 的证据验收。

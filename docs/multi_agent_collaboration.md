@@ -1,101 +1,56 @@
-# Multi-Agent Collaboration
+# 多智能体协作说明
 
-This document describes the agent workflow used by the smart-home simulation platform.
-
-## Architecture
-
-The current system is a center-orchestrated, role-based multi-agent workflow. It is not a decentralized autonomous negotiation system. The upgraded path records each role output on a shared blackboard so experiments and the frontend can inspect what each agent contributed.
+当前系统采用以 `TaskRunner` 为中心的角色分工式多智能体流程，不是去中心化的自主协商系统。各角色输出写入共享黑板，便于前端展示、实验记录和复核。
 
 ```text
-natural-language command
--> context memory
--> local RAG knowledge retrieval
--> semantic parsing
--> comfort analysis
--> energy review
--> task planning
--> safety review
--> critic review
--> action execution
--> environment update
--> feedback evaluation
--> optional correction
+自然语言指令
+→ 上下文记忆
+→ 本地 RAG 知识检索
+→ 语义解析
+→ 舒适度分析
+→ 能耗审查
+→ 任务规划
+→ 安全审查
+→ 批评审查
+→ 虚拟设备执行
+→ 环境更新
+→ 反馈评估
+→ 可选校正
 ```
 
-## Roles
+## 角色与职责
 
-| Role | Main module | Responsibility |
+| 角色 | 主要模块 | 职责 |
 | --- | --- | --- |
-| Orchestrator | `backend/app/experiments/task_runner.py` | Calls each stage and returns the final response. |
-| Semantic agent | `backend/app/agents/semantic_agent.py` | Converts a user command into structured semantic JSON. |
-| Knowledge agent | `backend/app/agents/knowledge_agent.py` | Retrieves local docs/config/task knowledge through RAG. |
-| Comfort agent | `backend/app/agents/comfort_agent.py` | Reviews target room comfort gaps before planning. |
-| Energy agent | `backend/app/agents/energy_agent.py` | Identifies active devices and unoccupied-room waste candidates. |
-| Planning agent | `backend/app/agents/planning_agent.py` | Builds a device action plan from semantic intent and current state. |
-| Safety agent | `backend/app/agents/safety_agent.py` | Applies guardrails such as health-context window blocking and AC/window conflict detection. |
-| Critic agent | `backend/app/agents/critic_agent.py` | Reviews the final candidate plan and records findings. |
-| Execution agent | `backend/app/agents/execution_agent.py` | Applies virtual device actions to the simulated environment. |
-| Feedback agent | `backend/app/agents/feedback_agent.py` | Evaluates whether the target state was reached and proposes corrections. |
-| LLM client | `backend/app/agents/llm_client.py` | Provides mock or real semantic parsing through a configurable provider. |
-| RAG store | `backend/app/rag/document_store.py` | Indexes local Markdown, YAML, and JSON sources for retrieval. |
+| 编排器 | `backend/app/experiments/task_runner.py` | 调用各阶段并返回最终响应。 |
+| 语义智能体 | `backend/app/agents/semantic_agent.py` | 将用户指令转换为结构化语义 JSON。 |
+| 知识智能体 | `backend/app/agents/knowledge_agent.py` | 经 RAG 检索本地文档、配置和任务知识。 |
+| 舒适度智能体 | `backend/app/agents/comfort_agent.py` | 在规划前检查目标房间的舒适度缺口。 |
+| 能耗智能体 | `backend/app/agents/energy_agent.py` | 识别已开启设备与无人房间的潜在浪费。 |
+| 规划智能体 | `backend/app/agents/planning_agent.py` | 由语义和当前状态生成虚拟设备动作计划。 |
+| 安全智能体 | `backend/app/agents/safety_agent.py` | 应用健康场景禁开窗、空调/窗户冲突等规则护栏。 |
+| 批评智能体 | `backend/app/agents/critic_agent.py` | 审核候选计划并记录问题。 |
+| 执行智能体 | `backend/app/agents/execution_agent.py` | 将动作应用到虚拟设备与仿真环境。 |
+| 反馈智能体 | `backend/app/agents/feedback_agent.py` | 判断目标是否达到，并提出校正建议。 |
+| 大模型客户端 | `backend/app/agents/llm_client.py` | 提供 mock 或真实模型语义解析。 |
+| RAG 文档库 | `backend/app/rag/document_store.py` | 索引本地 Markdown、YAML、JSON 源并提供检索。 |
 
-## Runtime Flow
+## 运行过程
 
-1. The frontend or API client sends `POST /api/agent/command`.
-2. `TaskRunner` reads the current `SmartHomeState`.
-3. The semantic agent parses intent, room, scope, target ranges, and candidate devices.
-4. The planning agent generates virtual device actions.
-5. The execution agent updates devices and environment state.
-6. The feedback agent evaluates lighting, temperature, humidity, comfort, and obvious waste.
-7. If feedback is not satisfied, the orchestrator may run correction actions.
-8. Safety and critic agents review the plan and annotate or adjust actions.
-9. The response includes semantic, planning, execution, feedback, action, final state, RAG, and blackboard data.
+1. 前端或 API 客户端向 `POST /api/agent/command` 发送指令。
+2. `TaskRunner` 读取当前 `SmartHomeState`。
+3. 语义智能体提取意图、房间、范围、目标区间和候选设备；知识智能体补充相关上下文。
+4. 舒适度、能耗、安全与批评角色形成可检查的审查信息。
+5. 规划智能体生成动作，执行智能体更新虚拟设备与环境状态。
+6. 反馈智能体评价照明、温湿度、舒适度与明显能耗浪费。
+7. 未满足时，编排器最多进行 3 轮校正。
 
-The correction loop is capped at 3 rounds to keep runs predictable.
+API 响应中的 `agent_output` 包含 `semantic_result`、`planning_result`、`execution_result`、`feedback_result`、`actions`、`final_state` 和 `multi_agent_blackboard`。前端在 `frontend/src/components/AgentOutputPanel.tsx` 中展示相关内容。
 
-## RAG Sources
+## RAG 与实现边界
 
-The local RAG index currently reads:
+RAG 默认读取 `docs/*.md`、`backend/app/config/*.yaml` 和 `data/tasks/*.json`。默认离线模式使用确定性词法检索；在 `RAG_RETRIEVAL_MODE=local_embedding` 下，可通过本地 Ollama 嵌入模型执行向量与词法混合检索。两种模式均可追溯来源，缓存不匹配时会重建。
 
-- `docs/*.md`
-- `backend/app/config/*.yaml`
-- `data/tasks/*.json`
+真实大模型目前主要参与语义解析，规划、执行、反馈和校正以可解释的程序逻辑实现。因此，多智能体协作描述的是仿真控制链路；它不等同于真实设备网络的自治控制或安全认证。
 
-API endpoints:
-
-- `GET /api/rag/sources`
-- `POST /api/rag/reindex`
-- `POST /api/rag/query`
-
-The default retriever uses deterministic lexical cosine scoring for local reproducibility. It can be replaced by FAISS, Chroma, or a local embedding service without changing agent call sites.
-
-## Implementation Boundary
-
-The real LLM path is currently used mainly for semantic parsing. Planning, execution, feedback, and correction are implemented with deterministic, explainable program logic. This keeps local testing reproducible and makes experiment results easier to inspect.
-
-## Response Shape
-
-The API returns a structured `agent_output` object with:
-
-- `semantic_result`
-- `planning_result`
-- `execution_result`
-- `feedback_result`
-- `actions`
-- `final_state`
-- `multi_agent_blackboard`
-- `planning_result.multi_agent_context`
-
-Frontend rendering is implemented in `frontend/src/components/AgentOutputPanel.tsx`, with TypeScript types in `frontend/src/types/state.ts`. The inspector includes RAG, Agents, and Safety tabs for the upgraded path.
-
-## Extension Points
-
-Possible future roles include:
-
-- energy optimization agent
-- safety constraint agent
-- policy review agent
-- user preference agent
-- experiment comparison agent
-
-Before adding a new role, define its input, output, call position, failure behavior, and evaluation metrics.
+新增角色前，应先定义输入、输出、调用位置、失败行为和评价指标。

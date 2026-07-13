@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 
 class MultiAgentBlackboard:
-    def __init__(self, user_command: str) -> None:
+    def __init__(self, user_command: str, on_stage: Callable[[dict[str, Any]], None] | None = None) -> None:
         timestamp = datetime.now().isoformat(timespec="seconds")
         self.data: dict[str, Any] = {
             "blackboard_id": f"bb-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
@@ -17,6 +17,7 @@ class MultiAgentBlackboard:
             "warnings": [],
             "metrics": {},
         }
+        self._on_stage = on_stage
 
     def add_stage(self, agent: str, output: dict[str, Any]) -> dict[str, Any]:
         output_snapshot = deepcopy(output)
@@ -27,6 +28,8 @@ class MultiAgentBlackboard:
         }
         self.data["stages"].append(entry)
         self.data["agent_outputs"][agent] = output_snapshot
+        if self._on_stage:
+            self._on_stage(deepcopy(entry))
         return entry
 
     def add_warning(self, message: str) -> None:

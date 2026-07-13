@@ -15,7 +15,7 @@ import {
   startLifeSimulation,
   stopLifeSimulation,
   submitResearchFeedback,
-  submitTask,
+  submitTaskWithTrace,
   tickLifeSimulation,
   updateEnvironment,
   updateResearchProfile,
@@ -30,7 +30,7 @@ import { ResearchControlPanel } from "./components/ResearchControlPanel";
 import { StatePanel } from "./components/StatePanel";
 import { ViewModeToggle, type SceneViewMode } from "./components/ViewModeToggle";
 import { HomePlan2D } from "./scene/HomePlan2D";
-import type { ActivityType, AgentHealth, AgentOutput, DeviceActionRequest, HistoryPoint, LifeSimulationDuration, LifeSimulationStatus, RobustnessConfig, RoomId, SmartHomeState, UserPreferenceProfile, WeatherType } from "./types/state";
+import type { ActivityType, AgentHealth, AgentOutput, AgentTraceStage, DeviceActionRequest, HistoryPoint, LifeSimulationDuration, LifeSimulationStatus, RobustnessConfig, RoomId, SmartHomeState, UserPreferenceProfile, WeatherType } from "./types/state";
 import "./styles.css";
 
 const HouseScene = lazy(async () => {
@@ -77,6 +77,7 @@ const ROOM_AVATAR_POSITIONS: Record<RoomId, { x: number; z: number }> = {
 export default function App() {
   const [state, setState] = useState<SmartHomeState | null>(null);
   const [agentOutput, setAgentOutput] = useState<AgentOutput | null>(null);
+  const [liveAgentStages, setLiveAgentStages] = useState<AgentTraceStage[]>([]);
   const [command, setCommand] = useState("");
   const [avatarPosition, setAvatarPosition] = useState({ x: -3.85, z: 1.25 });
   const [history, setHistory] = useState<HistoryPoint[]>([]);
@@ -344,7 +345,10 @@ export default function App() {
   function handleTaskSubmit() {
     return runWithLoading(async () => {
       const scopedCommand = withCurrentRoomContext(command, currentRoomName);
-      const response = await submitTask(scopedCommand, currentRoomId);
+      setLiveAgentStages([]);
+      const response = await submitTaskWithTrace(scopedCommand, currentRoomId, (stage) => {
+        setLiveAgentStages((current) => [...current, stage]);
+      });
       applyState(response.state);
       setAgentOutput(response.agent_output);
       setMessage(`智能体已感知你在${currentRoomName}，并完成任务规划与控制。`);
@@ -487,6 +491,7 @@ export default function App() {
         onCommandChange={setCommand}
         onSubmit={handleTaskSubmit}
         output={agentOutput}
+        liveStages={liveAgentStages}
         isLoading={isLoading || isLifeSimulationActive}
       />
       </section>
