@@ -1,6 +1,6 @@
 # 大模型智能家居数字孪生仿真平台
 
-这是一个可本地运行、可复现实验的智能家居数字孪生平台，用于研究自然语言设备控制、RAG 检索增强、大模型语义解析、虚拟设备执行与环境反馈闭环。
+这是一个可本地运行、可复现实验的自治型个性化智能家居数字孪生平台，用于研究持续环境感知、后端自主决策、自然语言设备控制、RAG 检索增强、多智能体协作、虚拟设备执行、执行后反思与长期用户适应。
 
 ## 项目定位与结论边界
 
@@ -16,9 +16,16 @@
 - 前端：React + TypeScript + Vite，提供 2D/延迟加载 3D 智能家居控制界面。
 - 闭环控制：语义解析、任务规划、动作执行、环境更新、反馈评估，最多执行 3 轮校正。
 - 多智能体：知识检索、舒适度、能耗、安全、批评审查、执行与反馈结果写入可检查的黑板（blackboard）。
+- 后端自治：不依赖浏览器的常驻感知循环，具备重复触发冷却、连续失败停机、运行互斥、状态查询与显式启停。
+- 私有记忆：按稳定的本地住户空间保存结构化属性、偏好、反馈、反思与情境经验；显式反馈可确认或纠正最近一次反思。
+- 反思智能体：每次交互或自治控制后生成独立、可追踪的 Reflection Agent 阶段，并把经验写回后续决策上下文。
 - RAG：支持确定性词法检索，或使用本地 Ollama 嵌入模型的向量与词法混合检索；索引带内容指纹和校验和缓存。
 - 大模型：支持稳定可复现的 `mock` 模式，以及兼容 OpenAI API 的 `real` 模式；默认本地配置可使用 Ollama 的 `qwen3:8b`。
 - 实验：提供批量任务、复现实验、个性化消融、生命周期仿真、质量门禁和报告生成脚本。
+
+自治运行、私有知识和反思学习的接口、保护机制与证据边界见 [docs/autonomous_personalization.md](docs/autonomous_personalization.md)；交互控制、持续自治、生活仿真与研究运行时的状态所有权和互斥关系见 [docs/runtime_control_contract.md](docs/runtime_control_contract.md)。
+
+大论文《基于大语言模型智能体的智能家居系统研究》的研究问题、对照、指标、当前证据、创新性边界和投稿前缺口集中见 [docs/thesis_argument_chain.md](docs/thesis_argument_chain.md)；机器可读主张矩阵可用 `scripts/validate_thesis_claims.py` 校验。该校验会区分“论证结构完整”和“证据已达到投稿要求”。
 
 ## 目录结构
 
@@ -41,7 +48,7 @@ docs/       中文系统说明、实验边界、运行与部署文档
 .\start.ps1
 ```
 
-也可以双击 `start.bat`。启动器会在缺失时从模板创建 `deploy/.env` 和 `deploy/backend.env`，构建并启动 Docker Compose 服务，等待健康检查后打开：
+也可以双击 `start.bat`。启动器会在缺失时从模板创建 `deploy/.env` 和 `deploy/backend.env`；当 `LLM_MODE=real` 时，它还会启动并等待本机 Ollama 就绪。随后构建并启动 Docker Compose 服务，等待健康检查后打开：
 
 ```text
 http://localhost
@@ -136,8 +143,20 @@ REAL_LLM_STREAM=true
 # 个性化多目标消融实验
 .\backend\.venv\Scripts\python.exe scripts\run_personalization_experiments.py
 
+# RQ1 guarded/unguarded 快照提交隔离对照
+.\backend\.venv\Scripts\python.exe scripts\run_snapshot_commit_experiment.py --repeats 100
+
+# 生成两套不含参考答案的独立语义标注任务包
+.\backend\.venv\Scripts\python.exe scripts\prepare_semantic_review_packets.py
+
 # 本地质量门禁
 .\backend\.venv\Scripts\python.exe scripts\run_quality_loop.py
+
+# 论文论证链结构与当前证据检查
+.\backend\.venv\Scripts\python.exe scripts\validate_thesis_claims.py --require-generated-evidence
+
+# 已启动 Docker 后，以独立 QA 住户空间串联验证正式 API（结果写入 data/results/quality/）
+.\backend\.venv\Scripts\python.exe scripts\smoke_live_api.py --base-url http://localhost
 ```
 
 生成的日志和报告位于 `data/logs/`、`data/results/` 与 `output/`，默认不会提交到 Git。真实模型实验应单独保存模型版本、环境配置指纹、任务集版本与原始结果；一次成功请求不是模型准确率、时延或并发能力的总体结论。
@@ -147,7 +166,8 @@ REAL_LLM_STREAM=true
 若要将某项结论表述为真实设备、现场安全或实际节能结果，必须复制并填写 `data/field_validation/field_validation_evidence.example.json`，为原始产物建立 SHA-256 清单，再执行：
 
 ```powershell
-.\backend\.venv\Scripts\python.exe scripts\verify_artifact_integrity.py create <原始产物目录>
+$env:ARTIFACT_SIGNING_KEY = '<从仓库外的密钥管理系统注入>'
+.\backend\.venv\Scripts\python.exe scripts\verify_artifact_integrity.py create <原始产物目录> --require-signature
 .\backend\.venv\Scripts\python.exe scripts\validate_field_validation_evidence.py <完成的证据文件.json>
 ```
 
@@ -166,6 +186,14 @@ REAL_LLM_STREAM=true
 
 ## 质量与安全说明
 
-公开部署时，在 `deploy/backend.env` 中设置强 `API_AUTH_TOKEN`。浏览器通过 HTTP-only、严格 SameSite 的 Cookie 保存经验证的令牌；API 客户端也可使用 `X-API-Key`。`X-Simulation-Session` 用于隔离不同浏览器会话的仿真状态。
+公开部署时，在 `deploy/backend.env` 中设置强 `API_AUTH_TOKEN`、显式 `BACKEND_CORS_ORIGINS` 和独立的 `PRIVATE_MEMORY_ENCRYPTION_KEY`。浏览器通过 HTTP-only、严格 SameSite 的 Cookie 保存经验证的令牌；API 客户端也可使用 `X-API-Key`。`X-Simulation-Session` 仅用于隔离不同浏览器会话的仿真状态，不是身份认证。Docker 将 `data/private_memory/` 挂载为持久卷，容器重建不会自动丢失住户记忆。
+
+Fernet 密钥必须在仓库外生成并进入密钥管理流程；禁止提交真实密钥。部署前运行以下 fail-closed 门禁，输出只报告检查结果，不打印密钥：
+
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\validate_deployment_config.py deploy\backend.env
+```
+
+运行时可通过 `GET /api/system/readiness` 查看认证、加密、持久化和自治快照提交状态。该接口是软件可观测性，不是隐私合规或真实设备安全证明。
 
 仓库的持续验证包括后端测试和 Ruff、前端 Vitest/生产构建、浏览器端到端测试、RAG 评测、依赖一致性与高危 npm 审计。改进闭环与停止规则见 [docs/loop_engineering.md](docs/loop_engineering.md)，历史证据见 [docs/improvement_backlog.md](docs/improvement_backlog.md)。

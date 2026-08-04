@@ -12,6 +12,7 @@ services:
     volumes:
       - ../data/logs:/app/data/logs
       - ../data/results:/app/data/results
+      - ../data/private_memory:/app/data/private_memory
     restart: unless-stopped
 
   frontend:

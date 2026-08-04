@@ -32,6 +32,7 @@ export interface RoomState {
 export interface OutdoorEnvironmentState {
   weather: WeatherType;
   time_hour: number;
+  time_minute: number;
   outdoor_illuminance_lux: number;
   solar_radiation_w_m2: number;
   outdoor_temperature_c: number;
@@ -278,6 +279,92 @@ export interface UserPreferenceProfile {
   feedback_count: number;
   satisfaction_ema: number;
   updated_at: string;
+}
+
+export interface PrivateMemoryReflection {
+  reflection_id: string;
+  recorded_at: string;
+  trigger: string;
+  intent: string;
+  room: string;
+  completed: boolean;
+  conclusion: string;
+  pattern_confidence: number;
+}
+
+export interface PrivateUserMemory {
+  schema_version: string;
+  scope: string;
+  persistence_enabled: boolean;
+  profile: UserPreferenceProfile;
+  private_attributes: Record<string, string>;
+  feedback_history: Array<Record<string, unknown>>;
+  reflections: PrivateMemoryReflection[];
+  learned_patterns: Record<string, Record<string, unknown>>;
+  reflection_policy: Record<string, string>;
+}
+
+export interface AutonomousTickResult {
+  mode: "backend_autonomous_runtime_v1";
+  cycle_at: string;
+  decision: {
+    triggered: boolean;
+    trigger_type: string;
+    room_id: RoomId | null;
+    reason: string;
+    command: string | null;
+    observed_value: unknown;
+    target: unknown;
+    suppressed?: boolean;
+    suppression_reason?: string;
+    cooldown_remaining_seconds?: number;
+  } | null;
+  agent_response: AgentCommandResponse | null;
+  state: SmartHomeState;
+  reflection_count: number;
+  success: boolean;
+  error: string | null;
+}
+
+export interface AutonomousRuntimeConfig {
+  interval_seconds: number;
+  simulation_minutes_per_cycle: number;
+  repeated_trigger_cooldown_seconds: number;
+  max_consecutive_failures: number;
+}
+
+export interface AutonomousRuntimeStatus {
+  architecture: "backend_owned_autonomous_loop";
+  active: boolean;
+  stopping: boolean;
+  config: AutonomousRuntimeConfig;
+  started_at: string | null;
+  stopped_at: string | null;
+  stop_reason: string;
+  cycle_count: number;
+  decision_count: number;
+  suppressed_count: number;
+  failure_count: number;
+  consecutive_failures: number;
+  last_cycle_at: string | null;
+  last_result: AutonomousTickResult | null;
+  last_reflex: {
+    policy: string;
+    trigger_type: string;
+    room_id: RoomId;
+    action: DeviceActionRequest;
+    success: boolean;
+    message: string;
+  } | null;
+  settings_persisted: boolean;
+  auto_resume_after_restart: boolean;
+  worker_alive: boolean;
+}
+
+export interface PresenceUpdateResult {
+  state: SmartHomeState;
+  reflex_action: AutonomousRuntimeStatus["last_reflex"];
+  autonomy_woken: boolean;
 }
 
 export interface RobustnessConfig {

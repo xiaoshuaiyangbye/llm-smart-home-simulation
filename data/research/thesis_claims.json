@@ -1,0 +1,397 @@
+{
+  "schema_version": "thesis_claim_matrix_v1",
+  "snapshot_date": "2026-07-16",
+  "working_title": "基于大语言模型智能体的智能家居系统研究",
+  "central_problem": "如何在软件数字孪生中，使基于大语言模型的智能家居自治同时具备异步状态安全、受约束个性化、可复现实验和可审计结论边界。",
+  "recommended_thesis_type": "design_science_systems_thesis",
+  "contribution_level": "system_and_methodological_innovation_not_new_foundational_algorithm",
+  "claim_tiers": {
+    "tier_1_software_mechanism": "可由代码、回归测试、运行日志和本地服务证据支持。",
+    "tier_2_fixed_simulation_effect": "只描述冻结任务、扰动和模拟器中的效应，不作总体外推。",
+    "tier_3_model_generalization": "必须完成版本固定的真实模型全任务实验和独立标注审查。",
+    "tier_4_real_home_effect": "必须完成真实设备、住户、校准、安全和现场协议；当前不支持。"
+  },
+  "research_questions": [
+    {
+      "id": "RQ1",
+      "question": "在 LLM 规划期间环境或偏好发生变化时，提交前快照校验能否阻止过期计划覆盖最新住户状态，并以多大判定与提交路径开销完成该检查？",
+      "mechanisms": [
+        "monotonic_environment_revision",
+        "preference_fingerprint",
+        "optimistic_snapshot_commit_v1",
+        "deterministic_commit_id"
+      ],
+      "baselines": [
+        {
+          "id": "unguarded_snapshot_commit",
+          "implemented": true,
+          "purpose": "比较无 revision/偏好指纹校验时的过期动作提交率；只能作为隔离实验基线，不能进入生产控制路径。"
+        }
+      ],
+      "metrics": [
+        "stale_plan_detected_count",
+        "stale_action_committed_count",
+        "constructed_state_change_to_effect_latency_ms",
+        "commit_decision_overhead_us",
+        "autonomous_failure_count",
+        "valid_decision_commit_rate"
+      ],
+      "repository_evidence": [
+        "backend/app/runtime/autonomous_service.py",
+        "backend/tests/test_autonomous_runtime.py",
+        "docs/runtime_control_contract.md"
+      ],
+      "generated_evidence": [
+        "data/results/quality/long_soak_30m_20260716T014548Z.json",
+        "data/results/snapshot_commit/20260716_025858/summary.json",
+        "data/results/snapshot_commit/20260716_025858/report.md"
+      ],
+      "current_result": "在 100 次确定性快照→状态变化→提交交错中，guarded 的过期动作误提交率为 0，unguarded 为 100%，绝对降低 100 个百分点；无状态变化时两组有效提交率均为 100%，中位门禁判定开销约 +0.15 微秒。构造状态变化到拒绝/执行结果的中位时间分别约 0.291/0.298 毫秒；该指标不是 presence 或真实高优先级事件响应时延。30 分钟本地软件仿真运行窗口另观察到 16 个过期计划均被拒绝。",
+      "evidence_status": "isolated_guarded_comparison_supported",
+      "supported_claim": "在冻结动作、初始状态、扰动和执行路径的隔离软件仿真中，快照新鲜度门禁阻止了全部构造的过期动作提交，且未降低有效快照提交率。",
+      "prohibited_claim": "该隔离实验已证明真实住宅中的故障发生率、硬实时保证、真实设备安全或相对所有并发控制方法的全面优越性。",
+      "next_required_evidence": [
+        "若论文扩展到生产部署主张，再增加多会话、多进程和设备确认故障模型",
+        "真实住宅或真实设备主张必须另行完成现场时延、安全与网络故障实验"
+      ],
+      "submission_blocker": false
+    },
+    {
+      "id": "RQ2",
+      "question": "固定个性化画像参与规划后，在模拟任务与扰动条件下，是否相对 single_agent 参考组改变能耗、舒适度和多目标效用？",
+      "mechanisms": [
+        "fixed_profile_planning_injection",
+        "profile_weighted_multi_objective_v1",
+        "paired_task_cluster_bootstrap_v2"
+      ],
+      "baselines": [
+        {
+          "id": "single_agent",
+          "implemented": true,
+          "purpose": "无多智能体审查、无偏好适配的控制基线。"
+        },
+        {
+          "id": "multi_agent_static",
+          "implemented": true,
+          "purpose": "有多智能体审查、无偏好适配的诊断组；当前报告未将其设为个性化效应的直接参考组。"
+        }
+      ],
+      "metrics": [
+        "completion_rate_percent",
+        "occupied_room_comfort_score",
+        "post_control_horizon_kwh",
+        "objective_energy_score",
+        "weighted_utility",
+        "estimated_satisfaction"
+      ],
+      "repository_evidence": [
+        "scripts/run_personalization_experiments.py",
+        "backend/tests/test_personalization_experiment_protocol.py",
+        "backend/app/research/personalization.py"
+      ],
+      "generated_evidence": [
+        "data/results/personalization/ablation_protocol.json",
+        "data/results/personalization/ablation_summary.json",
+        "data/results/personalization/ablation_summary.md"
+      ],
+      "current_result": "在 4 个普通控制任务簇、3 个配对 seed 的 mock 语义实验中，预构造固定画像只提供给 personalized 方法的规划阶段；其相对 single_agent 的模拟加权效用为 nominal +2.80、disturbed +0.253，同时舒适度分别为 -5.785 和 -1.363。该实验没有运行反思、重复显式反馈、确认升格和 confirmed_experience 形成链。",
+      "evidence_status": "fixed_simulation_descriptive_mock",
+      "supported_claim": "固定画像条件化规划在当前模拟任务中改变了目标权衡，并非所有指标同时改善。",
+      "prohibited_claim": "个性化已显著提升真实住户满意度、总体舒适度或真实家庭节能。",
+      "next_required_evidence": [
+        "冻结主要效用和舒适度非劣界值",
+        "扩展独立任务簇和住户画像，不把 seed 重复当独立样本",
+        "使用版本固定真实模型复现实验",
+        "若主张住户效果则开展真实用户研究"
+      ],
+      "submission_blocker": false
+    },
+    {
+      "id": "RQ6",
+      "question": "反思经验的显式反馈门禁能否在确认前阻止经验进入规划上下文，并在确认后仍禁止其改写关键目标和安全约束？",
+      "mechanisms": [
+        "explicit_feedback_gated_profile",
+        "user_confirmed_pattern_threshold",
+        "confirmed_experience_planning_context_only",
+        "atomic_private_memory_commit"
+      ],
+      "baselines": [
+        {
+          "id": "pre_confirmation_state",
+          "implemented": true,
+          "purpose": "经验未达到显式反馈样本量和正向率阈值时，不向规划暴露 confirmed_experience。"
+        },
+        {
+          "id": "post_confirmation_state",
+          "implemented": true,
+          "purpose": "达到阈值后只暴露统计上下文，并检查偏好目标与安全边界没有被经验自动改写。"
+        }
+      ],
+      "metrics": [
+        "confirmed_experience_visibility",
+        "minimum_explicit_feedback_count",
+        "positive_feedback_rate",
+        "target_mutation_count",
+        "safety_override_count",
+        "persistence_failure_atomicity"
+      ],
+      "repository_evidence": [
+        "backend/app/research/personalization.py",
+        "backend/tests/test_personalization.py",
+        "backend/tests/test_autonomous_runtime.py",
+        "docs/autonomous_personalization.md"
+      ],
+      "generated_evidence": [
+        "data/results/quality/latest.json"
+      ],
+      "current_result": "回归测试覆盖确认前不暴露、至少 3 次显式反馈且正向率达到阈值后暴露、用途仅为 planning_context_only_no_target_or_safety_override，以及写盘失败时的原子恢复。尚未评估该门禁对后续控制效用的因果效果。",
+      "evidence_status": "software_evidence_supported",
+      "supported_claim": "反馈门禁、上下文用途和不越权约束在当前软件实现中具有确定性回归证据。",
+      "prohibited_claim": "反馈确认机制已经提高控制质量、实现模型自我进化或代表真实住户长期偏好。",
+      "next_required_evidence": [
+        "若主张效用提升，单独设计端到端反馈升格与无升格对照",
+        "预注册经验形成窗口、用户反馈来源和后续任务单位",
+        "真实用户研究前不得把模拟反馈称为住户确认"
+      ],
+      "submission_blocker": false
+    },
+    {
+      "id": "RQ3",
+      "question": "中心编排的多智能体安全审查是否会对危险候选计划产生可追踪干预，并且其效应能否与普通任务结果分离？",
+      "mechanisms": [
+        "center_orchestrated_blackboard",
+        "safety_agent_action_revision",
+        "critic_trace",
+        "named_safety_fault_fixtures"
+      ],
+      "baselines": [
+        {
+          "id": "single_agent_no_review",
+          "implemented": true,
+          "purpose": "保留风险评估但不允许安全审查修改动作。"
+        },
+        {
+          "id": "multi_agent_static_review",
+          "implemented": true,
+          "purpose": "允许安全 Agent 修改动作，用于测量审查干预。"
+        }
+      ],
+      "metrics": [
+        "faults_injected_detected_blocked",
+        "safety_action_change_count",
+        "final_executable_plan_severity_penalty_v1",
+        "ordinary_task_outcomes"
+      ],
+      "repository_evidence": [
+        "backend/app/experiments/task_runner.py",
+        "backend/tests/test_personalization_experiment_protocol.py",
+        "docs/multi_agent_collaboration.md"
+      ],
+      "generated_evidence": [
+        "data/results/personalization/ablation_summary.json",
+        "data/results/personalization/ablation_summary.md"
+      ],
+      "current_result": "普通任务中 multi_agent_static 与 single_agent 仍无差异；安全实验已扩展为开窗、强风和过度制冷 3 个不同机制任务簇。126 条新鲜记录中，单智能体检测但未阻断 18/18 注入故障，两个带审查方法均阻断 18/18；安全分数差为 +80.00，任务簇 bootstrap 95% 区间为 [+80.00,+80.00]。",
+      "evidence_status": "three_named_fixture_clusters_descriptive",
+      "supported_claim": "在三个预定义软件故障机制和共享任务/扰动条件下，多智能体安全分支产生了可追踪动作干预并阻断全部注入故障；普通任务未显示审查分支优势。",
+      "prohibited_claim": "三个构造故障代表真实故障分布、多智能体总体优于单智能体，或该结果证明真实家庭安全。",
+      "next_required_evidence": [
+        "投稿时将普通任务副作用和构造故障拦截效果分表报告",
+        "若主张总体安全或真实设备安全，必须增加外部故障 taxonomy 与现场实验"
+      ],
+      "submission_blocker": false
+    },
+    {
+      "id": "RQ4",
+      "question": "证据优先的运行与实验契约能否使语义来源、状态演化、指标适用性、产物完整性和结论边界保持可追溯？",
+      "mechanisms": [
+        "mock_vs_real_semantic_provenance",
+        "task_and_runner_sha256",
+        "metric_applicability_guards",
+        "signed_artifact_manifest_capability",
+        "fail_closed_external_evidence_validators"
+      ],
+      "baselines": [
+        {
+          "id": "pre_contract_artifact_behavior",
+          "implemented": true,
+          "purpose": "由回归测试构造缺失来源、错误适用性、篡改清单和不完整外部证据，验证门禁 fail closed。"
+        }
+      ],
+      "metrics": [
+        "provenance_field_coverage",
+        "repeat_fingerprint_stability",
+        "invalid_artifact_rejection_rate",
+        "metric_applicability_consistency",
+        "quality_gate_pass_rate"
+      ],
+      "repository_evidence": [
+        "scripts/run_reproduction_experiments.py",
+        "scripts/verify_artifact_integrity.py",
+        "scripts/validate_semantic_annotation_review.py",
+        "scripts/validate_field_validation_evidence.py",
+        "backend/tests/test_reproduction_provenance.py",
+        "backend/tests/test_artifact_integrity.py",
+        "docs/improvement_backlog.md"
+      ],
+      "generated_evidence": [
+        "output/qa-complete-upgrade-reproduction/20260716_092731/summary.json",
+        "data/results/quality/latest.json",
+        "data/results/quality/live_api_matrix.json"
+      ],
+      "current_result": "当前 mock 复现实验覆盖 36 个任务、3 次隔离重复和 648 条稳定性记录；指标适用性、模型来源与标签来源显式记录。签名清单和不完整外部证据的 fail-closed 行为有回归测试，但当前引用的生成产物尚未绑定经复验的签名 manifest。",
+      "evidence_status": "software_evidence_supported",
+      "supported_claim": "仓库内软件仿真与实验报告能够记录来源、适用性和失败边界；签名完整性目前是已实现并测试的能力，不是当前引用产物已签名的证明。",
+      "prohibited_claim": "可追溯性本身证明模型准确、真实设备安全、隐私合规或研究结论正确。",
+      "next_required_evidence": [
+        "由独立人员复核门禁定义与原始产物",
+        "从仓库外注入密钥，将论文最终图表绑定冻结的签名产物和提交版本并保存复验记录",
+        "保存运行环境、依赖和模型不可变版本"
+      ],
+      "submission_blocker": false
+    },
+    {
+      "id": "RQ5",
+      "question": "版本固定的真实本地大模型在完整语义任务集上的准确性、稳定性和延迟，与规则语义基线相比如何？",
+      "mechanisms": [
+        "versioned_real_model_provenance",
+        "semantic_reference_v4",
+        "isolated_repeat_fingerprints"
+      ],
+      "baselines": [
+        {
+          "id": "rule_based_mock_v1",
+          "implemented": true,
+          "purpose": "确定性语义基线；不是待评估真实模型的替代品。"
+        }
+      ],
+      "metrics": [
+        "intent_accuracy_percent",
+        "room_accuracy_percent",
+        "scope_accuracy_percent",
+        "control_goal_accuracy_percent",
+        "target_exact_match_percent",
+        "target_range_iou_percent",
+        "device_selection_f1_percent",
+        "request_latency_ms",
+        "failed_run_rate"
+      ],
+      "repository_evidence": [
+        "data/tasks/reproduction_tasks.json",
+        "scripts/run_reproduction_experiments.py",
+        "scripts/validate_semantic_annotation_review.py"
+      ],
+      "generated_evidence": [
+        "output/rq5-real-model-fixed/20260716_111455/summary.json",
+        "output/rq5-real-model-fixed/20260716_111455/reproduction_report.md",
+        "output/rq5-real-model-fixed/20260716_111455/task_records.csv"
+      ],
+      "current_result": "固定 qwen3:8b digest 的完整 36 任务×3 重复实验已产生 216 条运行成功记录，真实组 108 条均为 effective real 且无缓存命中。覆盖率/准确率指标只使用预注册的主重复（每组 n=36）：真实组意图准确率 77.78% vs 规则组 66.67%、控制方向 77.78% vs 27.78%、设备 F1 56.59% vs 47.13%、完成率 100% vs 97.22%；但目标精确匹配 25.00% vs 61.11%、目标 IoU 70.47% vs 83.13%、响应 3693.22 ms vs 433.37 ms，能耗与舒适指标也更差。全部三次重复用于稳定性，真实组语义/计划精确重复稳定性为 91.67%/97.22%。运行成功不等于语义正确或任务完成；标签独立复核仍为 not_recorded。",
+      "evidence_status": "versioned_real_full_suite_descriptive",
+      "supported_claim": "在固定任务集、模型 digest、解码配置和软件模拟器中，qwen3:8b 相对规则基线改善了意图、控制方向和设备选择，但在参数目标、延迟、能耗和舒适度上存在明确代价。",
+      "prohibited_claim": "qwen3:8b 全面优于规则基线、这些固定任务百分比可外推到总体模型能力，或结果已经通过独立人工标签有效性审查。",
+      "next_required_evidence": [
+        "完成两名独立标注审查与歧义裁决",
+        "由非参考作者复核原始失败分类和论文图表",
+        "若主张模型总体能力，再增加外部任务集或第二模型复现"
+      ],
+      "submission_blocker": true
+    }
+  ],
+  "innovation_candidates": [
+    {
+      "id": "I1",
+      "name": "面向异步住宅状态的可审计 LLM 快照提交协议",
+      "novelty_type": "application_specific_system_mechanism",
+      "related_rq_ids": [
+        "RQ1"
+      ],
+      "status": "isolated_comparative_evidence_supported",
+      "safe_wording": "提出并实现一种结合环境 revision、偏好指纹和确定性 commit_id 的智能家居 LLM 计划提交协议。",
+      "unsafe_wording": "提出全新的并发控制算法并证明其全面优越。"
+    },
+    {
+      "id": "I2",
+      "name": "显式反馈门控且不越权的反思—个性化记忆闭环",
+      "novelty_type": "bounded_personalization_system_design",
+      "related_rq_ids": [
+        "RQ2",
+        "RQ6"
+      ],
+      "status": "mechanism_implemented_effect_not_evaluated",
+      "safe_wording": "构建反思持久化、用户确认升格和仅作规划上下文的受约束闭环；固定画像规划的模拟效应另行报告，不归因于经验形成机制。",
+      "unsafe_wording": "系统能够自主进化并持续提高真实住户满意度。"
+    },
+    {
+      "id": "I3",
+      "name": "可干预轨迹与证据边界联合约束的中心编排多智能体流程",
+      "novelty_type": "evidence_aware_orchestration_methodology",
+      "related_rq_ids": [
+        "RQ3",
+        "RQ4"
+      ],
+      "status": "three_fixture_mechanisms_and_software_evidence",
+      "safe_wording": "把安全审查是否改变动作、故障夹具来源、指标适用性和 mock/real 来源统一记录为可复核证据。",
+      "unsafe_wording": "多智能体天然比单智能体安全且性能更高。"
+    },
+    {
+      "id": "I4",
+      "name": "LLM、RAG、数字孪生、长期记忆和多智能体的集成",
+      "novelty_type": "integration_not_standalone_novelty",
+      "related_rq_ids": [
+        "RQ2",
+        "RQ3",
+        "RQ5"
+      ],
+      "status": "not_claimable_as_independent_innovation",
+      "safe_wording": "作为研究平台的工程集成与复现实验基础。",
+      "unsafe_wording": "首次将 LLM、RAG、多智能体或长期记忆用于智能家居。"
+    }
+  ],
+  "submission_blockers": [
+    "RQ5 的 36-task 标签仍缺少两名真实独立标注者、分歧裁决和身份/独立性原始记录"
+  ],
+  "real_home_claim_blockers": [
+    "无经过验收的真实设备现场证据",
+    "无真实住户长期研究",
+    "无传感器校准、实体设备确认和安全认证证据"
+  ],
+  "primary_related_work": [
+    {
+      "id": "RW1",
+      "title": "Generative Agents: Interactive Simulacra of Human Behavior",
+      "url": "https://doi.org/10.1145/3586183.3606763",
+      "overlap": "记忆、规划、反思和持续行为。"
+    },
+    {
+      "id": "RW2",
+      "title": "Reflexion: Language Agents with Verbal Reinforcement Learning",
+      "url": "https://arxiv.org/abs/2303.11366",
+      "overlap": "语言反思与情节记忆。"
+    },
+    {
+      "id": "RW3",
+      "title": "Towards Privacy-Preserving and Personalized Smart Homes via Tailored Small Language Models",
+      "url": "https://arxiv.org/abs/2507.08878",
+      "overlap": "本地、隐私和个性化智能家居。"
+    },
+    {
+      "id": "RW4",
+      "title": "Leveraging LLMs for Efficient and Personalized Smart Home Automation",
+      "url": "https://arxiv.org/abs/2601.04680",
+      "overlap": "任务记忆、个性化和智能家居执行。"
+    },
+    {
+      "id": "RW5",
+      "title": "Multi-Agent-Based Smart-Home Energy Management with Adaptive Reasoning",
+      "url": "https://doi.org/10.3390/app16041896",
+      "overlap": "多智能体、能耗、舒适度和持久记忆。"
+    },
+    {
+      "id": "RW6",
+      "title": "AgentSense: Virtual Sensor Data Generation Using LLM Agents in Simulated Home Environments",
+      "url": "https://doi.org/10.1609/aaai.v40i3.37169",
+      "overlap": "LLM Agent、模拟住宅与虚拟传感器。"
+    }
+  ]
+}

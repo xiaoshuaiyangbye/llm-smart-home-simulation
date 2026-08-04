@@ -129,14 +129,16 @@ export function AgentOutputPanel({
   return (
     <section className="agent-dock">
       <div className="command-box">
+        <span className="section-kicker">家庭助手</span>
+        <h2>想让家做什么？</h2>
         <label htmlFor="command">指令输入</label>
         <textarea
           id="command"
-          rows={5}
+          rows={3}
           value={command}
           onChange={(event) => onCommandChange(event.target.value)}
           onKeyDown={handleCommandKeyDown}
-          placeholder="请输入自然语言指令，例如：晚上7点，打开客厅灯和空调，温度设置为24度"
+          placeholder="例如：今晚十一点后卧室保持安静，温度不要低于 26 度"
         />
         <button type="button" disabled={!canSubmit} onClick={onSubmit}>
           {isLoading ? "执行中..." : "发送指令"}
@@ -145,7 +147,10 @@ export function AgentOutputPanel({
 
       <div className="agent-process-panel">
         <div className="process-header">
-          <h2>大语言模型智能体流程</h2>
+          <div>
+            <span className="section-kicker">执行过程</span>
+            <h2>助手正在这样处理</h2>
+          </div>
           <span>{formatLlmStatus(semantic.llm_mode, llmMetrics)}</span>
         </div>
         <div className="agent-flow">
@@ -322,7 +327,8 @@ function nextRecipient(agent: string): string {
     safety_agent: "critic_agent",
     critic_agent: "execution_agent",
     execution_agent: "feedback_agent",
-    feedback_agent: "orchestrator",
+    feedback_agent: "reflection_agent",
+    reflection_agent: "orchestrator",
   };
   return recipients[agent] ?? "orchestrator";
 }
@@ -341,6 +347,7 @@ function displayAgentName(agent: string): string {
     critic_agent: "批评 Agent",
     execution_agent: "执行 Agent",
     feedback_agent: "反馈 Agent",
+    reflection_agent: "反思 Agent",
   };
   return names[agent] ?? agent;
 }
@@ -378,6 +385,12 @@ function summarizeAgentMessage(agent: string, payload: Record<string, unknown>):
   }
   if (agent === "feedback_agent") {
     return payload.completed ? "目标已达成" : "反馈要求继续校正或收敛";
+  }
+  if (agent === "reflection_agent") {
+    if (payload.recorded === false && payload.reason === "persistence_failed") {
+      return "反思未持久化；控制结果保持成功，未更新经验。";
+    }
+    return `形成经验：${String(payload.conclusion ?? "已记录本次执行结果")}`;
   }
   return "已记录阶段输出";
 }

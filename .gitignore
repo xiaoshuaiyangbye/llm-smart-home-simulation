@@ -12,8 +12,10 @@ dist/
 deploy/backend.env
 data/logs/*
 data/results/*
+data/private_memory/*
 !data/logs/.gitkeep
 !data/results/.gitkeep
+!data/private_memory/.gitkeep
 output/
 .playwright-cli/
 frontend/test-results/

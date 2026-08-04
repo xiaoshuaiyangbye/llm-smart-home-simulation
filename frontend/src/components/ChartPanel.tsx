@@ -12,7 +12,8 @@ export function ChartPanel({ history }: ChartPanelProps) {
 
   return (
     <section className="panel chart-panel">
-      <h2>最近 20 步趋势</h2>
+      <span className="section-kicker">家庭趋势</span>
+      <h2>最近变化</h2>
       <div className="sparkline">
         {points.map((point, index) => (
           <div className="spark-column" key={`${point.step}-${index}`}>

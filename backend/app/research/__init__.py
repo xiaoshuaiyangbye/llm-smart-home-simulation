@@ -1,4 +1,6 @@
 from app.research.personalization import (
+    PrivateAttributeUpdate,
+    PrivateMemoryResetRequest,
     RobustnessConfig,
     UserFeedbackRequest,
     UserPreferenceProfile,
@@ -7,6 +9,8 @@ from app.research.personalization import (
 
 __all__ = [
     "RobustnessConfig",
+    "PrivateAttributeUpdate",
+    "PrivateMemoryResetRequest",
     "UserFeedbackRequest",
     "UserPreferenceProfile",
     "UserPreferenceService",

@@ -44,6 +44,7 @@ class RoomState(BaseModel):
 class OutdoorEnvironmentState(BaseModel):
     weather: WeatherType
     time_hour: int = Field(ge=0, le=23)
+    time_minute: int = Field(default=0, ge=0, le=59)
     outdoor_illuminance_lux: float = Field(ge=0)
     solar_radiation_w_m2: float = Field(ge=0)
     outdoor_temperature_c: float

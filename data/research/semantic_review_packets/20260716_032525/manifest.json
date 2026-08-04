@@ -1,0 +1,15 @@
+{
+  "schema_version": "semantic_annotation_handoff_v1",
+  "generated_at": "2026-07-16T03:25:25.952594+00:00",
+  "task_suite_path": "P:\\llm-smart-home-simulation\\data\\tasks\\reproduction_tasks.json",
+  "task_suite_sha256": "afe4eea78833a811694e1788350069ca69cb7a5a68ba92e72e1d102ea4a982e8",
+  "task_count": 36,
+  "reviewer_slots": [
+    "reviewer-a",
+    "reviewer-b"
+  ],
+  "reference_labels_in_packets": false,
+  "review_status": "not_started_external",
+  "acceptance_command": "backend\\.venv\\Scripts\\python.exe scripts\\validate_semantic_annotation_review.py <completed-review.json> --tasks data\\tasks\\reproduction_tasks.json",
+  "evidence_boundary": "Packet generation proves only blinded task preparation. It does not prove reviewer identity, independence, completed review, agreement, or adjudication."
+}

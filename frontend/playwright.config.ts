@@ -4,7 +4,10 @@ const python = process.env.PYTHON_BIN ?? (process.platform === "win32" ? "../bac
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  // These UI flows share one backend process and include a resident-owned
+  // scheduler. Keep each spec file ordered; concurrency belongs in a separate
+  // load/isolation suite instead of changing functional-test timing.
+  fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -21,12 +24,21 @@ export default defineConfig({
       // Browser flows exercise UI behavior; a real local model is verified by
       // its dedicated reproducibility command and must not make parallel E2E
       // workers contend for the Ollama service.
-      env: { ...process.env, LLM_MODE: "mock" },
+      env: {
+        ...process.env,
+        API_RATE_LIMIT_PER_MINUTE: "2000",
+        LLM_MODE: "mock",
+        RAG_RETRIEVAL_MODE: "lexical",
+      },
     },
     {
       command: "npm run dev -- --host localhost --port 5173",
       url: "http://localhost:5173",
       reuseExistingServer: !process.env.CI,
+      env: {
+        ...process.env,
+        VITE_API_BASE_URL: "http://127.0.0.1:8000",
+      },
     },
   ],
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

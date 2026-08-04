@@ -41,8 +41,9 @@ export function LifeSimulationPanel({
     <section className="panel life-sim-panel">
       <div className="life-sim-header">
         <div>
-          <h2>生活快速仿真</h2>
-          <p>{active ? `正在模拟 ${duration}` : "按真实 API 智能体快速推演"}</p>
+          <span className="section-kicker">生活场景</span>
+          <h2>生活模拟</h2>
+          <p>{active ? `正在模拟 ${duration}` : "加速观察长期自治表现"}</p>
         </div>
         <span className={active ? "run-status active" : "run-status"}>{active ? "运行中" : "待启动"}</span>
       </div>
@@ -73,19 +74,22 @@ export function LifeSimulationPanel({
         <Metric label="居住舒适度" value={formatNumber(summary.average_occupied_comfort)} emphasis />
         <Metric label="智能体能耗" value={`${formatNumber(summary.agent_energy_kwh, 3)} kWh`} />
         <Metric label="固定策略能耗" value={`${formatNumber(summary.baseline_energy_kwh, 3)} kWh`} />
-        <Metric label="智能体均功率" value={`${formatNumber(summary.average_power_w)} W`} />
-        <Metric label="基线均功率" value={`${formatNumber(summary.average_baseline_power_w)} W`} />
-        <Metric label="完成率" value={`${formatNumber(summary.task_completion_rate_percent)}%`} />
-        <Metric label="满意度" value={formatNumber(summary.average_satisfaction_score)} />
       </div>
-      <div className="life-sim-meta">
-        <Metric label="仿真时间" value={status ? `第 ${status.day} 天 ${status.time}` : "--"} />
-        <Metric label="速度" value={status?.speed_label ?? "24h sim = 24min real"} />
-        <Metric label="所在房间" value={status?.current_room_name || "--"} />
-        <Metric label="生活事件" value={status ? `${status.completed_event_count}/${status.event_count}` : "--"} />
-        <Metric label="天气来源" value={formatWeatherSource(status?.weather_source)} />
-        <Metric label="上次响应" value={typeof responseTimeMs === "number" ? `${(responseTimeMs / 1000).toFixed(1)} s` : "--"} />
-      </div>
+      <details className="life-details">
+        <summary>查看完整推演指标</summary>
+        <div className="life-sim-meta">
+          <Metric label="智能体均功率" value={`${formatNumber(summary.average_power_w)} W`} />
+          <Metric label="基线均功率" value={`${formatNumber(summary.average_baseline_power_w)} W`} />
+          <Metric label="完成率" value={`${formatNumber(summary.task_completion_rate_percent)}%`} />
+          <Metric label="满意度" value={formatNumber(summary.average_satisfaction_score)} />
+          <Metric label="仿真时间" value={status ? `第 ${status.day} 天 ${status.time}` : "--"} />
+          <Metric label="速度" value={status?.speed_label ?? "24h sim = 24min real"} />
+          <Metric label="所在房间" value={status?.current_room_name || "--"} />
+          <Metric label="生活事件" value={status ? `${status.completed_event_count}/${status.event_count}` : "--"} />
+          <Metric label="天气来源" value={formatWeatherSource(status?.weather_source)} />
+          <Metric label="上次响应" value={typeof responseTimeMs === "number" ? `${(responseTimeMs / 1000).toFixed(1)} s` : "--"} />
+        </div>
+      </details>
       {status?.last_event && (
         <div className="life-last-event">
           <strong>{String(status.last_event.activity ?? "生活事件")}</strong>

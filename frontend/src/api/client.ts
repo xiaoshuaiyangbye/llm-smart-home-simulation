@@ -12,20 +12,27 @@ import type {
   TaskResponse,
   WeatherType,
   RobustnessConfig,
+  PrivateUserMemory,
+  PresenceUpdateResult,
+  AutonomousTickResult,
+  AutonomousRuntimeConfig,
+  AutonomousRuntimeStatus,
   UserPreferenceProfile,
 } from "../types/state";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://localhost:8000" : "");
 const REQUEST_TIMEOUT_MS = 20_000;
-const SESSION_STORAGE_KEY = "smart-home-simulation-session";
+const RESIDENT_STORAGE_KEY = "smart-home-resident-workspace-id";
+const LEGACY_SESSION_STORAGE_KEY = "smart-home-simulation-session";
 
 function getSessionId(): string {
-  const stored = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  const stored = window.localStorage.getItem(RESIDENT_STORAGE_KEY);
   if (stored) return stored;
-  const sessionId = crypto.randomUUID().replace(/-/g, "");
-  window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
-  return sessionId;
+  const legacy = window.sessionStorage.getItem(LEGACY_SESSION_STORAGE_KEY);
+  const residentId = legacy ?? crypto.randomUUID().replace(/-/g, "");
+  window.localStorage.setItem(RESIDENT_STORAGE_KEY, residentId);
+  return residentId;
 }
 
 async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
@@ -80,6 +87,13 @@ export function fetchSmartHomeState(): Promise<SmartHomeState> {
 
 export function fetchEnergyMetrics(): Promise<EnergyState> {
   return requestJson<EnergyState>("/api/energy");
+}
+
+export function updateCurrentRoom(currentRoomId: SmartHomeState["rooms"][number]["room_id"]): Promise<PresenceUpdateResult> {
+  return requestJson<PresenceUpdateResult>("/api/presence/current-room", {
+    method: "PUT",
+    body: JSON.stringify({ current_room_id: currentRoomId }),
+  });
 }
 
 export function stepSimulation(minutes = 1): Promise<SmartHomeState> {
@@ -151,6 +165,48 @@ export function submitResearchFeedback(payload: {
   return requestJson<UserPreferenceProfile>("/api/research/profile/feedback", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function fetchPrivateUserMemory(): Promise<PrivateUserMemory> {
+  return requestJson<PrivateUserMemory>("/api/research/private-memory");
+}
+
+export function updatePrivateUserAttributes(attributes: Record<string, string | null>): Promise<PrivateUserMemory> {
+  return requestJson<PrivateUserMemory>("/api/research/private-memory/attributes", {
+    method: "PUT",
+    body: JSON.stringify({ attributes }),
+  });
+}
+
+export function runAutonomousTick(minutes = 5): Promise<AutonomousTickResult> {
+  return requestJson<AutonomousTickResult>("/api/autonomy/tick", {
+    method: "POST",
+    body: JSON.stringify({ minutes }),
+  });
+}
+
+export function startAutonomousRuntime(
+  config: AutonomousRuntimeConfig,
+): Promise<AutonomousRuntimeStatus> {
+  return requestJson<AutonomousRuntimeStatus>("/api/autonomy/start", {
+    method: "POST",
+    body: JSON.stringify(config),
+  });
+}
+
+export function stopAutonomousRuntime(): Promise<AutonomousRuntimeStatus> {
+  return requestJson<AutonomousRuntimeStatus>("/api/autonomy/stop", { method: "POST" });
+}
+
+export function fetchAutonomousRuntimeStatus(): Promise<AutonomousRuntimeStatus> {
+  return requestJson<AutonomousRuntimeStatus>("/api/autonomy/status");
+}
+
+export function resetPrivateUserMemory(): Promise<PrivateUserMemory> {
+  return requestJson<PrivateUserMemory>("/api/research/private-memory", {
+    method: "DELETE",
+    body: JSON.stringify({ confirmation: "RESET_PRIVATE_MEMORY" }),
   });
 }
 

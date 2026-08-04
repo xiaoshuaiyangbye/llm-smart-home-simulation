@@ -15,7 +15,7 @@
 .\start.ps1
 ```
 
-或双击 `start.bat`。脚本会在缺失时由示例文件创建 `deploy/.env` 与 `deploy/backend.env`，运行 `docker compose up -d --build`，等待 `http://localhost/health` 就绪，然后打开：
+或双击 `start.bat`。脚本会在缺失时由示例文件创建 `deploy/.env` 与 `deploy/backend.env`。若 `LLM_MODE=real`，它会先启动并等待本机 Ollama 在 `127.0.0.1:11434` 就绪；随后运行 `docker compose up -d --build`，等待 `http://localhost/health` 就绪，然后打开：
 
 ```text
 http://localhost

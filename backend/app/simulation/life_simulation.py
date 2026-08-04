@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.experiments.logger import ExperimentLogger
 from app.experiments.task_runner import TaskRunner
+from app.agents.reflection_agent import ReflectionAgent
 from app.research import RobustnessConfig, UserPreferenceService
 from app.schemas.state_schema import ActivityType, RoomId, SmartHomeState, WeatherType
 from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse
@@ -132,6 +133,7 @@ class LifeSimulationService:
         project_root: Path,
         output_dir: Path | None = None,
         preference_service: UserPreferenceService | None = None,
+        reflection_agent: ReflectionAgent | None = None,
         robustness_config: RobustnessConfig | None = None,
     ) -> None:
         self.environment = environment
@@ -141,6 +143,9 @@ class LifeSimulationService:
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.weather_profile = HistoricalWeatherProfile(project_root)
         self.preference_service = preference_service
+        self.reflection_agent = reflection_agent or (
+            ReflectionAgent(preference_service) if preference_service else None
+        )
         self.robustness_config = robustness_config or RobustnessConfig()
         self.baseline_environment = SmartHomeEnvironment()
         self.runner: TaskRunner | None = None
@@ -355,6 +360,16 @@ class LifeSimulationService:
                 state,
                 revision_round=99,
             )
+        reflection: dict[str, Any] | None = None
+        if response.success and self.reflection_agent:
+            response.feedback_result = feedback_result
+            response = self.reflection_agent.reflect(
+                response,
+                trigger="autonomous_life_event",
+                user_command=event.command,
+            )
+            feedback_result = response.feedback_result
+            reflection = feedback_result.get("self_reflection")
         llm_metrics = response.semantic_result.get("llm_metrics", {}) if isinstance(response.semantic_result, dict) else {}
         record = {
             **self._base_record(state, "event", event.activity, completed=feedback_result.get("completed"), baseline_state=baseline_state),
@@ -375,6 +390,10 @@ class LifeSimulationService:
             "llm_temperature": llm_metrics.get("temperature", ""),
             "llm_seed": llm_metrics.get("seed", ""),
             "error": response.error or "",
+            "reflection_id": reflection.get("reflection_id", "") if isinstance(reflection, dict) else "",
+            "reflection_conclusion": reflection.get("conclusion", "") if isinstance(reflection, dict) else "",
+            "reflection_recorded": reflection.get("recorded") if isinstance(reflection, dict) else None,
+            "reflection_reason": reflection.get("reason", "") if isinstance(reflection, dict) else "",
         }
         self.event_records.append(record)
         self.last_event = record

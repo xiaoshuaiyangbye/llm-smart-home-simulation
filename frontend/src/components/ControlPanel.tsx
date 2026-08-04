@@ -41,10 +41,17 @@ export function ControlPanel({
 }: ControlPanelProps) {
   const weather = state?.outdoor_environment.weather ?? "sunny";
   const timeHour = state?.outdoor_environment.time_hour ?? 14;
+  const focusedRoom = state?.rooms.find((room) => room.occupancy) ?? state?.rooms[0];
 
   return (
     <section className="panel control-panel">
-      <h2>控制面板</h2>
+      <div className="panel-heading-row">
+        <div>
+          <span className="section-kicker">设备控制</span>
+          <h2>手动控制</h2>
+        </div>
+        <small>{focusedRoom ? ROOM_LABELS[focusedRoom.room_id] : "等待住宅状态"}</small>
+      </div>
       <div className="control-grid">
         <label>
           天气
@@ -74,15 +81,15 @@ export function ControlPanel({
         <button type="button" disabled={isLoading} className="secondary-button" onClick={onReset}>重置系统</button>
       </div>
       <div className="device-controls">
-        {state?.rooms.map((room) => (
+        {focusedRoom && state && (
           <RoomControl
-            key={room.room_id}
-            roomId={room.room_id}
+            key={focusedRoom.room_id}
+            roomId={focusedRoom.room_id}
             state={state}
             disabled={isLoading}
             onDeviceAction={onDeviceAction}
           />
-        ))}
+        )}
       </div>
     </section>
   );

@@ -67,12 +67,12 @@ def test_reproduction_runtime_provenance_uses_selected_environment(
     assert reproduction_experiments.load_experiment_environment(env_file) is True
     provenance = reproduction_experiments.semantic_runtime_provenance("real")
 
-    assert reproduction_experiments.os.environ["REAL_LLM_BASE_URL"] == "http://localhost:11434/v1"
+    assert reproduction_experiments.os.environ["REAL_LLM_BASE_URL"] == "http://127.0.0.1:11434/v1"
     assert provenance["model_id"] == "qwen3:8b"
     assert provenance["model_revision"] == "sha256:fixed-model-digest"
     assert provenance["model_revision_source"] == "configured_environment"
     assert provenance["provenance_status"] == "versioned_real_model"
-    assert provenance["endpoint_resolution"] == "host_docker_internal_to_localhost"
+    assert provenance["endpoint_resolution"] == "host_docker_internal_to_ipv4_loopback"
     assert provenance["semantic_adapter_sha256"] == reproduction_experiments.semantic_adapter_sha256()
     assert provenance["semantic_runtime_fingerprint"]
 
@@ -720,6 +720,18 @@ def test_report_labels_runtime_success_separately_from_semantic_correctness(tmp_
     assert record["intent_correct"] is False
     assert "Runtime success %" in report
     assert "It is not semantic correctness or task completion" in report
+    category = summary["category_summaries"][0]
+    category_row = next(
+        line
+        for line in report.splitlines()
+        if line.startswith(f"| {group.name} | {category['category']} |")
+    )
+    category_cells = [cell.strip() for cell in category_row.strip("|").split("|")]
+    assert len(category_cells) == 13
+    assert category_cells[3] == f"{category['success_rate_percent']:.2f}"
+    assert category_cells[4] == reproduction_experiments.format_metric(
+        category["task_completion_rate_percent"]
+    )
 
 
 def test_failed_pre_context_command_is_not_reported_as_task_runtime_success() -> None:

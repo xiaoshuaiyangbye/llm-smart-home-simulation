@@ -51,18 +51,29 @@ def get_initial_state() -> SmartHomeState:
 
 
 class SmartHomeEnvironment:
-    def __init__(self) -> None:
-        self._state = get_initial_state()
+    def __init__(self, initial_state: SmartHomeState | None = None) -> None:
+        self._state = initial_state.model_copy(deep=True) if initial_state is not None else get_initial_state()
+        self._revision = 0
+
+    @property
+    def revision(self) -> int:
+        """Monotonic mutation version used for optimistic runtime commits."""
+        return self._revision
+
+    def _commit_state(self, state: SmartHomeState) -> SmartHomeState:
+        self._state = state
+        self._revision += 1
+        return self._state
 
     def get_state(self, refresh_realtime: bool = True) -> SmartHomeState:
         if refresh_realtime:
-            self._state = self._refresh_realtime_environment(self._state)
+            self._commit_state(self._refresh_realtime_environment(self._state))
         return self._state
 
     def reset(self, refresh_realtime: bool = True) -> SmartHomeState:
-        self._state = get_initial_state()
+        self._commit_state(get_initial_state())
         if refresh_realtime:
-            self._state = self._refresh_realtime_environment(self._state)
+            self._commit_state(self._refresh_realtime_environment(self._state))
         return self._state
 
     def set_current_room(self, room_id: str, activity: ActivityType | None = None) -> SmartHomeState:
@@ -89,8 +100,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state)
-        self._state = next_state
-        return self._state
+        return self._commit_state(next_state)
 
     def set_outdoor_snapshot(
         self,
@@ -107,6 +117,7 @@ class SmartHomeEnvironment:
             update={
                 "weather": weather,
                 "time_hour": max(0, min(23, time_hour)),
+                "time_minute": 0,
                 "outdoor_illuminance_lux": max(0.0, outdoor_illuminance_lux),
                 "solar_radiation_w_m2": max(0.0, solar_radiation_w_m2),
                 "outdoor_temperature_c": outdoor_temperature_c,
@@ -123,8 +134,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state)
-        self._state = next_state
-        return self._state
+        return self._commit_state(next_state)
 
     def set_away(self) -> SmartHomeState:
         rooms = [
@@ -135,8 +145,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state)
-        self._state = next_state
-        return self._state
+        return self._commit_state(next_state)
 
     def set_outdoor_environment(
         self,
@@ -148,6 +157,7 @@ class SmartHomeEnvironment:
             updates["weather"] = weather
         if time_hour is not None:
             updates["time_hour"] = max(0, min(23, time_hour))
+            updates["time_minute"] = 0
 
         next_environment = self._state.outdoor_environment.model_copy(update=updates)
         next_state = self._state.model_copy(update={"outdoor_environment": next_environment})
@@ -158,8 +168,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state)
-        self._state = next_state
-        return self._state
+        return self._commit_state(next_state)
 
     def apply_actions(self, actions: list[AgentAction]) -> SmartHomeState:
         devices = self._state.devices
@@ -178,8 +187,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state)
-        self._state = next_state
-        return self._state
+        return self._commit_state(next_state)
 
     def step(self, minutes: int = 1, refresh_realtime: bool = True) -> SmartHomeState:
         minutes = max(1, minutes)
@@ -194,8 +202,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state, dt_minutes=minutes)
-        self._state = next_state
-        return self._state
+        return self._commit_state(next_state)
 
     def step_with_outdoor_snapshot(
         self,
@@ -215,6 +222,7 @@ class SmartHomeEnvironment:
             update={
                 "weather": weather,
                 "time_hour": max(0, min(23, time_hour)),
+                "time_minute": 0,
                 "outdoor_illuminance_lux": max(0.0, outdoor_illuminance_lux),
                 "solar_radiation_w_m2": max(0.0, solar_radiation_w_m2),
                 "outdoor_temperature_c": outdoor_temperature_c,
@@ -231,8 +239,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state, dt_minutes=minutes)
-        self._state = next_state
-        return self._state
+        return self._commit_state(next_state)
 
     def apply_device_action(
         self,
@@ -257,8 +264,7 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state)
-        self._state = next_state
-        return True, message, before_state, self._state
+        return True, message, before_state, self._commit_state(next_state)
 
     def apply_device_actions_batch(
         self,
@@ -309,15 +315,20 @@ class SmartHomeEnvironment:
         next_state = recalculate_sensor_values(next_state)
         next_state = update_comfort_metrics(next_state)
         next_state = update_energy_metrics(next_state)
-        self._state = next_state
-        return results, self._state
+        return results, self._commit_state(next_state)
 
     def _advance_time(self, state: SmartHomeState, minutes: int) -> SmartHomeState:
         next_time_step = state.current_time_step + minutes
-        elapsed_hours = next_time_step // 60 - state.current_time_step // 60
-        next_hour = (state.outdoor_environment.time_hour + elapsed_hours) % 24
+        current_clock_minutes = (
+            state.outdoor_environment.time_hour * 60
+            + state.outdoor_environment.time_minute
+        )
+        next_clock_minutes = (current_clock_minutes + minutes) % (24 * 60)
         next_outdoor_environment = state.outdoor_environment.model_copy(
-            update={"time_hour": next_hour}
+            update={
+                "time_hour": next_clock_minutes // 60,
+                "time_minute": next_clock_minutes % 60,
+            }
         )
         return state.model_copy(
             update={
@@ -335,12 +346,10 @@ class SmartHomeEnvironment:
         return next_state
 
     def get_energy_metrics(self) -> EnergyState:
-        self._state = update_energy_metrics(self._state)
-        return self._state.energy_metrics
+        return self._commit_state(update_energy_metrics(self._state)).energy_metrics
 
     def get_comfort_metrics(self) -> ComfortState:
-        self._state = update_comfort_metrics(self._state)
-        return self._state.comfort_metrics
+        return self._commit_state(update_comfort_metrics(self._state)).comfort_metrics
 
 
 def recalculate_room_illuminance(state: SmartHomeState) -> SmartHomeState:

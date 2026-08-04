@@ -88,11 +88,14 @@ def update_weather_environment(state: SmartHomeState) -> SmartHomeState:
 
 
 def sync_realtime_environment(state: SmartHomeState) -> SmartHomeState:
-    current_hour = datetime.now(timezone(timedelta(hours=8))).hour
+    current_time = datetime.now(timezone(timedelta(hours=8)))
     state_with_current_time = state.model_copy(
         update={
             "outdoor_environment": state.outdoor_environment.model_copy(
-                update={"time_hour": current_hour}
+                update={
+                    "time_hour": current_time.hour,
+                    "time_minute": current_time.minute,
+                }
             )
         }
     )

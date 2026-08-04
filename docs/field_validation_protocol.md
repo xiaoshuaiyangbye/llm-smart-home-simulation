@@ -40,7 +40,8 @@
 复制 `data/field_validation/field_validation_evidence.example.json` 并补全真实记录。在原始产物目录创建清单后执行：
 
 ```powershell
-.\backend\.venv\Scripts\python.exe scripts\verify_artifact_integrity.py create <原始产物目录>
+$env:ARTIFACT_SIGNING_KEY = '<从仓库外的密钥管理系统注入>'
+.\backend\.venv\Scripts\python.exe scripts\verify_artifact_integrity.py create <原始产物目录> --require-signature
 .\backend\.venv\Scripts\python.exe scripts\validate_field_validation_evidence.py <完成的证据文件.json>
 ```
 

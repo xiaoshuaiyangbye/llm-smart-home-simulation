@@ -19,6 +19,7 @@ from app.experiments.logger import ExperimentLogger
 from app.rag import RagDocumentStore
 from app.research import RobustnessConfig, UserPreferenceService
 from app.schemas.action_schema import AgentOutput
+from app.schemas.state_schema import SmartHomeState
 from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse, TaskRequest, TaskResponse
 from app.simulation.environment import SmartHomeEnvironment
 
@@ -48,11 +49,12 @@ class TaskRunner:
         self,
         environment: SmartHomeEnvironment,
         experiment_logger: ExperimentLogger,
-        refresh_realtime: bool = True,
+        refresh_realtime: bool = False,
         enable_feedback_correction: bool = True,
         enable_context_memory: bool = True,
         enable_multi_agent_review: bool = True,
         execute_actions: bool = True,
+        log_task_results: bool = True,
         rag_store: RagDocumentStore | None = None,
         experiment_safety_fault: dict[str, Any] | None = None,
     ) -> None:
@@ -76,6 +78,7 @@ class TaskRunner:
         self.enable_context_memory = enable_context_memory
         self.enable_multi_agent_review = enable_multi_agent_review
         self.execute_actions = execute_actions
+        self.log_task_results = log_task_results
         # This hook is intentionally constructor-only: it is a deterministic
         # experiment fixture, not an API surface for normal home control.
         self.experiment_safety_fault = deepcopy(experiment_safety_fault) if experiment_safety_fault else None
@@ -356,12 +359,13 @@ class TaskRunner:
                 actions=plan_result.get("actions", []),
                 multi_agent_blackboard=deepcopy(blackboard_snapshot),
             )
-            self.experiment_logger.log_task(
-                experiment_id="agent-command",
-                user_command=request.user_command,
-                agent_output=agent_output,
-                state=final_state,
-            )
+            if self.log_task_results:
+                self.experiment_logger.log_task(
+                    experiment_id="agent-command",
+                    user_command=request.user_command,
+                    agent_output=agent_output,
+                    state=final_state,
+                )
             if self.enable_context_memory:
                 self._remember_follow_me_semantic(semantic_result)
             return AgentCommandResponse(
@@ -399,8 +403,8 @@ class TaskRunner:
             error=response.error,
         )
 
-    def validate_llm_connection(self) -> dict:
-        current_state = self.environment.get_state(refresh_realtime=True)
+    def validate_llm_connection(self, current_state: SmartHomeState | None = None) -> dict:
+        current_state = current_state or self.environment.get_state(refresh_realtime=True)
         return self.semantic_agent.llm_client.validate_connection(current_state)
 
     def get_context_memory(self) -> dict[str, Any]:
@@ -549,19 +553,33 @@ class TaskRunner:
         """
         fault = self.experiment_safety_fault or {}
         fault_type = str(fault.get("type", ""))
-        if fault_type not in {"unsafe_window_opening", "unsafe_fan_speed"}:
+        if fault_type not in {
+            "unsafe_window_opening",
+            "unsafe_fan_speed",
+            "unsafe_ac_overcooling",
+        }:
             raise ValueError(f"Unsupported experiment safety fault: {fault.get('type')}")
         entity_id = str(fault.get("entity_id", ""))
-        expected_device_type = "window" if fault_type == "unsafe_window_opening" else "fan"
+        expected_device_type = {
+            "unsafe_window_opening": "window",
+            "unsafe_fan_speed": "fan",
+            "unsafe_ac_overcooling": "ac",
+        }[fault_type]
         if not entity_id.startswith(f"{expected_device_type}."):
             raise ValueError(f"{fault_type} requires a {expected_device_type} entity_id")
 
         if fault_type == "unsafe_window_opening":
             action = "set_opening"
             parameters = {"opening_pct": float(fault.get("opening_pct", 100))}
-        else:
+        elif fault_type == "unsafe_fan_speed":
             action = "set_speed"
             parameters = {"speed_pct": float(fault.get("speed_pct", 100))}
+        else:
+            action = "set_temperature"
+            parameters = {
+                "mode": "cool",
+                "setpoint_c": float(fault.get("setpoint_c", 16)),
+            }
 
         injected_action = {
             "entity_id": entity_id,

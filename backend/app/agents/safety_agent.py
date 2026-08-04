@@ -16,7 +16,7 @@ class SafetyAgent:
         blocked_entities = assessment["blocked_entities"]
 
         reviewed_actions = [
-            self._block_action(action, "blocked by safety review")
+            self._block_action(action, "blocked by safety review", semantic_result)
             if str(action.get("entity_id")) in blocked_entities
             else action
             for action in actions
@@ -76,6 +76,27 @@ class SafetyAgent:
                     )
                     blocked_entities.add(str(action.get("entity_id")))
 
+        if constraints.get("avoid_overcooling"):
+            cooling_floor = float(constraints.get("cooling_setpoint_floor_c", 26))
+            for action in actions:
+                parameters = action.get("parameters", {})
+                if not isinstance(parameters, dict):
+                    parameters = {}
+                if (
+                    _device_type(action) == "ac"
+                    and action.get("action") in {"turn_on", "set_temperature"}
+                    and parameters.get("mode", "cool") == "cool"
+                    and float(parameters.get("setpoint_c", cooling_floor)) < cooling_floor
+                ):
+                    issues.append(
+                        {
+                            "severity": "high",
+                            "entity_id": action.get("entity_id"),
+                            "message": "Cooling setpoint conflicts with the active overcooling constraint.",
+                        }
+                    )
+                    blocked_entities.add(str(action.get("entity_id")))
+
         by_room = _actions_by_room(actions)
         for room_id, room_actions in by_room.items():
             ac_cooling = any(_device_type(action) == "ac" and action.get("action") == "turn_on" and action.get("parameters", {}).get("mode") == "cool" for action in room_actions)
@@ -94,7 +115,12 @@ class SafetyAgent:
             "blocked_entities": blocked_entities,
         }
 
-    def _block_action(self, action: dict[str, Any], reason: str) -> dict[str, Any]:
+    def _block_action(
+        self,
+        action: dict[str, Any],
+        reason: str,
+        semantic_result: dict[str, Any],
+    ) -> dict[str, Any]:
         device_type = _device_type(action)
         blocked = {**action, "reason": f"{action.get('reason', '')}; {reason}"}
         if device_type == "window":
@@ -103,6 +129,11 @@ class SafetyAgent:
         elif device_type == "fan":
             blocked["action"] = "set_speed"
             blocked["parameters"] = {"speed_pct": 0}
+        elif device_type == "ac":
+            constraints = semantic_result.get("constraints", {})
+            floor = float(constraints.get("cooling_setpoint_floor_c", 26))
+            blocked["action"] = "set_temperature"
+            blocked["parameters"] = {"mode": "cool", "setpoint_c": floor}
         return blocked
 
 

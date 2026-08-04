@@ -37,7 +37,7 @@ def test_protocol_requires_within_condition_and_seed_comparisons() -> None:
     }
     assert set(protocol["conditions"]) == {"nominal", "disturbed"}
     assert protocol["seeds"] == [7, 19, 31]
-    assert protocol["task_ids"] == ["P001", "P002", "P003", "P004", "P005", "P006"]
+    assert protocol["task_ids"] == ["P001", "P002", "P003", "P004", "P005", "P006", "P007"]
     provenance = protocol["artifact_provenance"]
     assert provenance["runner_source_sha256"] == personalization_experiments.runner_source_sha256()
     assert provenance["task_suite_sha256"] == personalization_experiments.task_suite_sha256()
@@ -56,8 +56,9 @@ def test_protocol_requires_within_condition_and_seed_comparisons() -> None:
     assert [(fixture["task_id"], fixture["fault_id"]) for fixture in protocol["safety_fault_fixtures"]] == [
         ("P005", "SFI-001"),
         ("P006", "SFI-002"),
+        ("P007", "SFI-003"),
     ]
-    assert "two deterministic actuator-fault" in protocol["safety_fixture_claim_boundary"]
+    assert "three deterministic fault-mechanism" in protocol["safety_fixture_claim_boundary"]
     assert "not significance tests" in protocol["inference_limitation"]
     assert "fewer than 3 task clusters" in protocol["inference_limitation"]
 
@@ -119,11 +120,11 @@ def test_all_ablation_methods_emit_the_same_outcome_metrics(monkeypatch) -> None
         assert {record["disturbance_seed"] for record in matching} == {
             personalization_experiments.task_disturbance_seed(7, task_id)
         }
-    fault_records = [record for record in records if record["task_id"] in {"P005", "P006"}]
+    fault_records = [record for record in records if record["task_id"] in {"P005", "P006", "P007"}]
     assert {record["evaluation_scenario"] for record in fault_records} == {"safety_fault_injection"}
-    assert {record["safety_fault_id"] for record in fault_records} == {"SFI-001", "SFI-002"}
+    assert {record["safety_fault_id"] for record in fault_records} == {"SFI-001", "SFI-002", "SFI-003"}
     assert all(record["safety_fault_injected"] for record in fault_records)
-    for fault_id in ("SFI-001", "SFI-002"):
+    for fault_id in ("SFI-001", "SFI-002", "SFI-003"):
         fixture_records = [record for record in fault_records if record["safety_fault_id"] == fault_id]
         baseline_fault = next(record for record in fixture_records if record["method"] == "single_agent")
         # The single-agent baseline receives diagnostic assessment but no safety

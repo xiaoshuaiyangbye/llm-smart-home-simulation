@@ -24,11 +24,15 @@ def _valid_payload(artifact_directory: str) -> dict[str, object]:
     }
 
 
-def test_field_validation_evidence_requires_complete_real_device_evidence(tmp_path: Path) -> None:
+def test_field_validation_evidence_requires_complete_real_device_evidence(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("ARTIFACT_SIGNING_KEY", "field-evidence-signing-key")
     artifact_directory = tmp_path / "artifact"
     artifact_directory.mkdir()
     (artifact_directory / "raw.csv").write_text("value\n1\n", encoding="utf-8")
-    field_validation_evidence.artifact_integrity.write_manifest(artifact_directory)
+    field_validation_evidence.artifact_integrity.write_manifest(
+        artifact_directory,
+        signing_key="field-evidence-signing-key",
+    )
 
     payload = _valid_payload("artifact")
     assert field_validation_evidence.validate(payload, tmp_path) == []
@@ -39,12 +43,26 @@ def test_field_validation_evidence_requires_complete_real_device_evidence(tmp_pa
     assert "test_environment.rollback_procedure must be a non-empty string" in errors
 
 
-def test_field_validation_evidence_rejects_changed_artifacts(tmp_path: Path) -> None:
+def test_field_validation_evidence_rejects_changed_artifacts(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("ARTIFACT_SIGNING_KEY", "field-evidence-signing-key")
     artifact_directory = tmp_path / "artifact"
     artifact_directory.mkdir()
     (artifact_directory / "raw.csv").write_text("value\n1\n", encoding="utf-8")
-    field_validation_evidence.artifact_integrity.write_manifest(artifact_directory)
+    field_validation_evidence.artifact_integrity.write_manifest(
+        artifact_directory,
+        signing_key="field-evidence-signing-key",
+    )
     (artifact_directory / "raw.csv").write_text("value\n2\n", encoding="utf-8")
 
     errors = field_validation_evidence.validate(_valid_payload("artifact"), tmp_path)
     assert errors == ["artifact changed: raw.csv"]
+
+
+def test_field_validation_evidence_rejects_unsigned_artifacts(tmp_path: Path) -> None:
+    artifact_directory = tmp_path / "artifact"
+    artifact_directory.mkdir()
+    (artifact_directory / "raw.csv").write_text("value\n1\n", encoding="utf-8")
+    field_validation_evidence.artifact_integrity.write_manifest(artifact_directory)
+
+    errors = field_validation_evidence.validate(_valid_payload("artifact"), tmp_path)
+    assert errors == ["artifact signature missing"]

@@ -57,6 +57,49 @@ function Test-HttpReady {
   }
 }
 
+function Test-OllamaReady {
+  try {
+    $response = Invoke-RestMethod -Uri "http://127.0.0.1:11434/api/tags" -TimeoutSec 3
+    return $null -ne $response.models
+  } catch {
+    return $false
+  }
+}
+
+function Wait-OllamaReady {
+  param([int]$TimeoutSeconds = 30)
+
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    if (Test-OllamaReady) {
+      return $true
+    }
+    Start-Sleep -Seconds 1
+  }
+
+  return $false
+}
+
+function Start-OllamaIfNeeded {
+  if (Test-OllamaReady) {
+    Write-Host "Ollama is already running."
+    return
+  }
+
+  $ollamaCommand = Get-Command ollama -ErrorAction SilentlyContinue
+  if (-not $ollamaCommand) {
+    throw "LLM_MODE=real requires Ollama, but the 'ollama' command was not found. Install Ollama or change deploy/backend.env to LLM_MODE=mock."
+  }
+
+  Write-Host "Ollama is not running. Starting Ollama..."
+  Start-Process -FilePath $ollamaCommand.Source -ArgumentList "serve" -WindowStyle Hidden
+  if (-not (Wait-OllamaReady)) {
+    throw "Ollama was started, but it did not become ready at http://127.0.0.1:11434 within 30 seconds. Check Ollama, then run start.bat again."
+  }
+
+  Write-Host "Ollama is ready."
+}
+
 function Invoke-CheckedCommand {
   param(
     [Parameter(Mandatory = $true)]
@@ -87,24 +130,6 @@ function Wait-HttpReady {
   }
 
   return $false
-}
-
-function Get-DockerDesktopPath {
-  $candidates = @(
-    (Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"),
-    (Join-Path $env:LOCALAPPDATA "Docker\Docker\Docker Desktop.exe")
-  )
-
-  $dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
-  if ($dockerCommand -and $dockerCommand.Source) {
-    $directory = Split-Path -Parent $dockerCommand.Source
-    for ($level = 0; $level -lt 4 -and $directory; $level += 1) {
-      $candidates += Join-Path $directory "Docker Desktop.exe"
-      $directory = Split-Path -Parent $directory
-    }
-  }
-
-  return $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 }
 
 function Wait-DockerEngine {
@@ -139,13 +164,15 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 }
 
 if (-not (Test-DockerEngine)) {
-  $dockerDesktop = Get-DockerDesktopPath
-  if (-not $dockerDesktop) {
-    throw "Docker is installed, but Docker Desktop was not found. Install Docker Desktop, then run start.bat again."
+  Write-Host "Docker engine is not running. Starting Docker Desktop..."
+  # Current Docker Desktop releases expose a supported CLI startup path.
+  # Calling the launcher executable directly can exit immediately without
+  # starting the backend engine.
+  & docker desktop start --detach --timeout 15
+  if ($LASTEXITCODE -ne 0) {
+    throw "Docker Desktop could not be started through its CLI. Open Docker Desktop, check its diagnostic message, then run start.bat again."
   }
 
-  Write-Host "Docker engine is not running. Starting Docker Desktop..."
-  Start-Process -FilePath $dockerDesktop
   Write-Host "Waiting for Docker engine (up to 120 seconds)..."
   if (-not (Wait-DockerEngine)) {
     throw "Docker Desktop was started, but its engine did not become ready within 120 seconds. Open Docker Desktop and check its status, then run start.bat again."
@@ -154,6 +181,13 @@ if (-not (Test-DockerEngine)) {
 
 Copy-ExampleIfMissing -Target $deployEnv -Example $deployEnvExample
 Copy-ExampleIfMissing -Target $backendEnv -Example $backendEnvExample
+
+$llmMode = Get-EnvFileValue -Path $backendEnv -Name "LLM_MODE" -DefaultValue "mock"
+if ($llmMode -eq "real") {
+  Start-OllamaIfNeeded
+} else {
+  Write-Host "LLM_MODE=$llmMode; skipping Ollama startup."
+}
 
 $frontendPort = $env:FRONTEND_PORT
 if (-not $frontendPort) {

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +70,14 @@ def validate(payload: object, base_directory: Path) -> list[str]:
             errors.append(f"artifact manifest is missing: {manifest_path}")
         else:
             try:
-                errors.extend(f"artifact {error}" for error in artifact_integrity.verify_manifest(artifact_directory))
+                errors.extend(
+                    f"artifact {error}"
+                    for error in artifact_integrity.verify_manifest(
+                        artifact_directory,
+                        signing_key=os.getenv("ARTIFACT_SIGNING_KEY") or None,
+                        require_signature=True,
+                    )
+                )
             except (OSError, ValueError, json.JSONDecodeError, KeyError, TypeError) as error:
                 errors.append(f"artifact manifest cannot be verified: {type(error).__name__}")
     return sorted(errors)

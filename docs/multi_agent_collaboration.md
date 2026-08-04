@@ -2,6 +2,8 @@
 
 当前系统采用以 `TaskRunner` 为中心的角色分工式多智能体流程，不是去中心化的自主协商系统。各角色输出写入共享黑板，便于前端展示、实验记录和复核。
 
+检索关键词：`multi agent collaboration`、`multi-agent collaboration`、`center-orchestrated`、`TaskRunner`、`blackboard`、安全审查、批评审查。本文档是多智能体协作架构、角色职责、调用顺序和证据边界的主入口。
+
 ```text
 自然语言指令
 → 上下文记忆

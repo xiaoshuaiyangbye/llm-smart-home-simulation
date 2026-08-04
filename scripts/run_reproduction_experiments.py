@@ -278,8 +278,10 @@ def bridge_docker_ollama_endpoint_for_host_runner() -> None:
 
     The deployment backend can reach ``host.docker.internal`` while a Windows
     process running this benchmark cannot. Only that exact local endpoint is
-    rewritten to localhost; the configured and effective endpoints are kept as
-    non-secret hashes in the generated provenance.
+    rewritten to the explicit IPv4 loopback address; using ``localhost`` on
+    this Windows host can route urllib through an unstable IPv6/proxy path.
+    The configured and effective endpoints are kept as non-secret hashes in
+    the generated provenance.
     """
     configured_base_url = os.getenv("REAL_LLM_BASE_URL", "")
     os.environ["REAL_LLM_CONFIGURED_BASE_URL"] = configured_base_url
@@ -290,14 +292,14 @@ def bridge_docker_ollama_endpoint_for_host_runner() -> None:
     local_base_url = urlunsplit(
         (
             parsed.scheme,
-            f"localhost:{parsed.port}" if parsed.port else "localhost",
+            f"127.0.0.1:{parsed.port}" if parsed.port else "127.0.0.1",
             parsed.path,
             "",
             "",
         )
     )
     os.environ["REAL_LLM_BASE_URL"] = local_base_url
-    os.environ["REAL_LLM_ENDPOINT_RESOLUTION"] = "host_docker_internal_to_localhost"
+    os.environ["REAL_LLM_ENDPOINT_RESOLUTION"] = "host_docker_internal_to_ipv4_loopback"
 
 
 def _sha256_text(value: str) -> str:
@@ -1834,13 +1836,14 @@ def render_report(summary: dict[str, Any]) -> str:
             "## Category Metrics (primary isolated repeat)",
             "",
             "| Group | Category | Samples | Runtime success % | Completion % | Intent accuracy % | Room accuracy % | Scope accuracy % | Control-goal accuracy % | Target exact match % | Target range IoU % | Device exact match % | Device F1 % |",
-            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
         ]
     )
     for item in summary["category_summaries"]:
         lines.append(
             f"| {item['group_name']} | {item['category']} | {item['sample_count']} | "
-            f"{format_metric(item['task_completion_rate_percent'])} | {format_metric(item['intent_accuracy_percent'])} | "
+            f"{item['success_rate_percent']:.2f} | {format_metric(item['task_completion_rate_percent'])} | "
+            f"{format_metric(item['intent_accuracy_percent'])} | "
             f"{format_metric(item['room_accuracy_percent'])} | {format_metric(item['scope_accuracy_percent'])} | "
             f"{format_metric(item['control_goal_accuracy_percent'])} | "
             f"{format_metric(item['target_exact_match_percent'])} | {format_metric(item['target_range_iou_percent'])} | "

@@ -30,37 +30,51 @@ export function StatePanel({ state, lastMessage }: StatePanelProps) {
 
   return (
     <section className="panel state-panel">
-      <h2>状态面板</h2>
+      <div className="panel-heading-row">
+        <div>
+          <span className="section-kicker">全屋状态</span>
+          <h2>家庭数据</h2>
+        </div>
+        <small>{state.rooms.filter((room) => room.occupancy).length} 个活动房间</small>
+      </div>
       <div className="summary-grid">
         <Metric label="天气" value={state.outdoor_environment.weather} />
-        <Metric label="时间" value={`${state.outdoor_environment.time_hour}:00`} />
+        <Metric label="时间" value={`${String(state.outdoor_environment.time_hour).padStart(2, "0")}:${String(state.outdoor_environment.time_minute).padStart(2, "0")}`} />
         <Metric label="室外照度" value={`${state.outdoor_environment.outdoor_illuminance_lux.toFixed(0)} lx`} />
         <Metric label="太阳辐射" value={`${state.outdoor_environment.solar_radiation_w_m2.toFixed(0)} W/m2`} />
         <Metric label="室外温度" value={`${state.outdoor_environment.outdoor_temperature_c.toFixed(1)} C`} />
         <Metric label="室外湿度" value={`${state.outdoor_environment.outdoor_humidity_percent.toFixed(0)}%`} />
-        <Metric label="数据源" value={formatOutdoorDataSource(state.outdoor_environment.outdoor_data_source)} />
-        <Metric label="照度来源" value={formatIlluminanceDataSource(state.outdoor_environment.illuminance_data_source)} />
-        <Metric label="更新时间" value={formatDataUpdatedAt(state.outdoor_environment.data_updated_at)} />
       </div>
+      <details className="provenance-details">
+        <summary>查看环境数据来源</summary>
+        <div className="summary-grid">
+          <Metric label="数据源" value={formatOutdoorDataSource(state.outdoor_environment.outdoor_data_source)} />
+          <Metric label="照度来源" value={formatIlluminanceDataSource(state.outdoor_environment.illuminance_data_source)} />
+          <Metric label="更新时间" value={formatDataUpdatedAt(state.outdoor_environment.data_updated_at)} />
+        </div>
+      </details>
       <ComfortPanel state={state} />
       <EnergyPanel energy={state.energy_metrics} />
       {lastMessage && <div className="last-message">{lastMessage}</div>}
-      <div className="room-state-list">
-        {state.rooms.map((room) => (
-          <div className="state-card" key={room.room_id}>
-            <strong>{ROOM_LABELS[room.room_id]} · {room.activity}</strong>
-            <span>照度 {room.indoor_illuminance_lux.toFixed(1)} lx</span>
-            <span>温度 {room.indoor_temperature_c.toFixed(1)} C</span>
-            <span>湿度 {room.indoor_humidity_percent.toFixed(0)}%</span>
-            <span>{room.occupancy ? "有人" : "无人"}</span>
-          </div>
-        ))}
-      </div>
-      <div className="device-list">
-        {state.devices.filter((device) => device.device_type !== "sensor").map((device) => (
-          <DeviceLine key={device.entity_id} device={device} />
-        ))}
-      </div>
+      <details className="telemetry-details">
+        <summary>查看全部房间与设备</summary>
+        <div className="room-state-list">
+          {state.rooms.map((room) => (
+            <div className="state-card" key={room.room_id}>
+              <strong>{ROOM_LABELS[room.room_id]} · {room.activity}</strong>
+              <span>照度 {room.indoor_illuminance_lux.toFixed(1)} lx</span>
+              <span>温度 {room.indoor_temperature_c.toFixed(1)} C</span>
+              <span>湿度 {room.indoor_humidity_percent.toFixed(0)}%</span>
+              <span>{room.occupancy ? "有人" : "无人"}</span>
+            </div>
+          ))}
+        </div>
+        <div className="device-list">
+          {state.devices.filter((device) => device.device_type !== "sensor").map((device) => (
+            <DeviceLine key={device.entity_id} device={device} />
+          ))}
+        </div>
+      </details>
     </section>
   );
 }
@@ -83,21 +97,24 @@ function EnergyPanel({ energy }: { energy: EnergyState }) {
         <Metric label="小时耗电" value={`${energy.projected_hourly_energy_kwh.toFixed(3)} kWh`} />
         <Metric label="舒适能效" value={`${energy.comfort_adjusted_efficiency_score.toFixed(1)}`} />
       </div>
-      <div className="energy-breakdown">
-        {Object.entries(energy.by_device_type_w).map(([type, power]) => (
-          <EnergyBar
-            key={type}
-            label={deviceTypeLabel(type)}
-            value={power}
-            max={Math.max(energy.current_power_w, 1)}
-            detail={powerBreakdownText(energy, type)}
-          />
-        ))}
-      </div>
-      <p className="standard-note">
-        功率组成：总功率 = 运行功率 + 待机功率。关闭状态下智能灯按 0.2 W、空调按 1.5 W、风扇按 0.3 W 计入待机功耗；窗帘和窗户仅在动作瞬间耗电，当前静态状态按 0 W 计。
-      </p>
-      <p className="standard-note">对照说明：{energy.baseline_definition}</p>
+      <details className="energy-details">
+        <summary>查看设备能耗拆解与口径</summary>
+        <div className="energy-breakdown">
+          {Object.entries(energy.by_device_type_w).map(([type, power]) => (
+            <EnergyBar
+              key={type}
+              label={deviceTypeLabel(type)}
+              value={power}
+              max={Math.max(energy.current_power_w, 1)}
+              detail={powerBreakdownText(energy, type)}
+            />
+          ))}
+        </div>
+        <p className="standard-note">
+          功率组成：总功率 = 运行功率 + 待机功率。关闭状态下智能灯按 0.2 W、空调按 1.5 W、风扇按 0.3 W 计入待机功耗；窗帘和窗户仅在动作瞬间耗电，当前静态状态按 0 W 计。
+        </p>
+        <p className="standard-note">对照说明：{energy.baseline_definition}</p>
+      </details>
     </div>
   );
 }
