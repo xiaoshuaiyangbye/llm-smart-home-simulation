@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 
 import type { AgentOutput, AgentTraceStage } from "../types/state";
+import { DecisionTracePanel } from "./DecisionTracePanel";
 
 interface AgentOutputPanelProps {
   command: string;
@@ -17,6 +18,7 @@ type InspectorTab =
   | "semantic"
   | "planning"
   | "rag"
+  | "harness"
   | "agents"
   | "a2a"
   | "safety"
@@ -29,6 +31,7 @@ const TAB_LABELS: Record<InspectorTab, string> = {
   semantic: "语义",
   planning: "规划",
   rag: "RAG",
+  harness: "Graph Harness",
   agents: "协同",
   a2a: "A2A 对话",
   safety: "安全",
@@ -59,6 +62,8 @@ export function AgentOutputPanel({
     { status: "waiting" };
   const traceBlackboard = liveStages.length > 0 ? { stages: liveStages } : blackboard;
   const a2aMessages = useMemo(() => buildA2AMessages(traceBlackboard), [traceBlackboard]);
+  const workflowGraph = asRecord(asRecord(blackboard).workflow_graph);
+  const workflowStages = Array.isArray(asRecord(blackboard).stages) ? (asRecord(blackboard).stages as AgentTraceStage[]) : [];
   const ragContext = semantic.rag_context ?? knowledgeResult.rag_context ?? { status: "waiting" };
   const llmMetrics = asRecord(semantic.llm_metrics);
   const promptTemplate = semantic.prompt_template ?? { status: "waiting" };
@@ -75,10 +80,7 @@ export function AgentOutputPanel({
   const completed = Boolean(feedback.completed);
   const actions = Array.isArray(output?.actions) ? output.actions : [];
   const executedCount = Number(execution.executed_count ?? 0);
-  const ragRecord = asRecord(ragContext);
-  const ragMatchesValue = ragRecord.matches;
   const safetyIssuesValue = safetyReview.issues;
-  const ragMatches = Array.isArray(ragMatchesValue) ? ragMatchesValue.length : 0;
   const safetyIssues = Array.isArray(safetyIssuesValue) ? safetyIssuesValue.length : 0;
   const canSubmit = command.trim().length > 0 && !isLoading;
 
@@ -97,6 +99,7 @@ export function AgentOutputPanel({
     if (activeTab === "semantic") return semanticForDisplay;
     if (activeTab === "planning") return output?.planning_result ?? { status: "waiting" };
     if (activeTab === "rag") return ragContext;
+    if (activeTab === "harness") return workflowGraph;
     if (activeTab === "agents") return blackboard;
     if (activeTab === "a2a") return a2aMessages;
     if (activeTab === "safety") return Object.keys(safetyReview).length > 0 ? safetyReview : { status: "waiting" };
@@ -114,6 +117,7 @@ export function AgentOutputPanel({
     ragContext,
     safetyReview,
     semanticForDisplay,
+    workflowGraph,
   ]);
 
   function handleCommandKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -154,60 +158,14 @@ export function AgentOutputPanel({
           <span>{formatLlmStatus(semantic.llm_mode, llmMetrics)}</span>
         </div>
         <div className="agent-flow">
-          <FlowNode
-            label="感知"
-            active={Boolean(output)}
-            detail={
-              output
-                ? `${String(getNested(promptPayload, "room_count") ?? "-")} rooms / ${String(
-                    getNested(promptPayload, "device_count") ?? "-",
-                  )} devices`
-                : "等待输入"
-            }
-          />
-          <FlowNode
-            label="RAG"
-            active={ragMatches > 0}
-            detail={ragMatches > 0 ? `检索 ${ragMatches} 段知识` : "等待检索"}
-          />
-          <FlowNode
-            label="记忆"
-            active={Boolean(semantic.memory_context)}
-            detail={semantic.memory_context ? String(getNested(memoryContext, "day_summary") ?? "上下文已载入") : "等待上下文"}
-          />
-          <FlowNode
-            label="意图"
-            active={Boolean(semantic.intent)}
-            detail={
-              semantic.intent
-                ? `${String(semantic.intent)} / ${String(semantic.room)} / ${String(semantic.control_goal ?? "set_target")}`
-                : "等待识别"
-            }
-          />
-          <FlowNode
-            label="规划"
-            active={actions.length > 0}
-            detail={actions.length > 0 ? `${actions.length} 个设备动作` : "等待规划"}
-          />
-          <FlowNode
-            label="安全"
-            active={Object.keys(safetyReview).length > 0}
-            detail={safetyIssues > 0 ? `${safetyIssues} 个风险` : Object.keys(safetyReview).length > 0 ? "已通过" : "等待检查"}
-          />
-          <FlowNode
-            label="执行"
-            active={executedCount > 0}
-            detail={executedCount > 0 ? `已执行 ${executedCount} 个动作` : "等待执行"}
-          />
-          <FlowNode
-            label="反馈"
-            active={Boolean(output?.feedback_result)}
-            detail={completed ? "目标已达成" : output ? "等待修正或收敛" : "等待反馈"}
-          />
+          <FlowNode label="理解需求" active={Boolean(semantic.intent)} detail={semantic.intent ? "已识别房间与控制需求" : "等待一条指令"} />
+          <FlowNode label="拟定动作" active={actions.length > 0} detail={actions.length > 0 ? `${actions.length} 个设备动作` : "等待规划"} />
+          <FlowNode label="检查风险" active={Object.keys(safetyReview).length > 0} detail={safetyIssues > 0 ? `${safetyIssues} 个风险需处理` : Object.keys(safetyReview).length > 0 ? "检查已通过" : "等待检查"} />
+          <FlowNode label="执行与反馈" active={executedCount > 0} detail={completed ? "反馈报告目标已达成" : executedCount > 0 ? `已执行 ${executedCount} 个动作` : "等待执行"} />
         </div>
       </div>
 
-      <div className="agent-inspector">
+      <details className="agent-inspector"><summary>查看推理、协作与执行详情</summary>
         <div className="inspector-tabs" role="tablist" aria-label="Agent output inspector">
           {(Object.keys(TAB_LABELS) as InspectorTab[]).map((tab) => (
             <button
@@ -223,11 +181,20 @@ export function AgentOutputPanel({
           ))}
         </div>
         <div className="inspector-title">
-          <h3>{activeTab === "a2a" ? "A2A 风格消息轨迹" : `${TAB_LABELS[activeTab]} JSON`}</h3>
+          <h3>{activeTab === "a2a" ? "A2A 风格消息轨迹" : activeTab === "harness" ? "Graph-Governed Agent Harness" : `${TAB_LABELS[activeTab]} JSON`}</h3>
           {activeTab === "actions" && <span>{actions.length} 个动作</span>}
         </div>
-        {activeTab === "a2a" ? <A2ADialog messages={a2aMessages} isLive={isLoading} /> : <pre>{JSON.stringify(inspectorValue, null, 2)}</pre>}
-      </div>
+        {activeTab === "a2a" ? (
+          <A2ADialog messages={a2aMessages} isLive={isLoading} />
+        ) : activeTab === "harness" ? (
+          <>
+            <GraphHarnessPanel graph={workflowGraph} stages={workflowStages} />
+            <DecisionTracePanel trace={planning.decision_trace} />
+          </>
+        ) : (
+          <pre>{JSON.stringify(inspectorValue, null, 2)}</pre>
+        )}
+      </details>
     </section>
   );
 }
@@ -261,6 +228,42 @@ function A2ADialog({ messages, isLive }: { messages: A2AMessage[]; isLive: boole
         </details>
       ))}
     </div>
+  );
+}
+
+function GraphHarnessPanel({ graph, stages }: { graph: Record<string, unknown>; stages: AgentTraceStage[] }) {
+  const nodes = Array.isArray(graph.nodes) ? graph.nodes.filter((node): node is string => typeof node === "string") : [];
+  const observed = new Set(stages.map((stage) => stage.agent));
+  const validation = asRecord(graph.trace_validation);
+  const isValid = validation.valid === true;
+  const isInvalid = validation.valid === false;
+  const version = typeof graph.version === "string" ? graph.version : "等待完整命令结果";
+
+  return (
+    <section className="graph-harness" aria-label="Graph-Governed Agent Harness">
+      <div className="graph-harness-summary">
+        <div>
+          <span className="section-kicker">中心化图约束控制</span>
+          <strong>{version}</strong>
+        </div>
+        <span className={isValid ? "graph-status valid" : isInvalid ? "graph-status invalid" : "graph-status pending"}>
+          {isValid ? "轨迹校验通过" : isInvalid ? "轨迹校验异常" : "等待校验"}
+        </span>
+      </div>
+      {nodes.length > 0 ? (
+        <ol className="graph-node-track" aria-label="本次声明工作流节点">
+          {nodes.map((node) => (
+            <li key={node} className={observed.has(node) ? "observed" : "declared"}>
+              <i aria-hidden="true" />
+              <span>{displayAgentName(node)}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="graph-empty">发送一次命令后，可查看该次执行的版本化图与节点轨迹。</p>
+      )}
+      <p className="graph-boundary">本次软件 trace 用于展示中心化编排与可审计路径；不代表模型优劣、真实设备安全或真实家庭效果。</p>
+    </section>
   );
 }
 

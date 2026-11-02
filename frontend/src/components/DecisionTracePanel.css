@@ -1,0 +1,90 @@
+.decision-replay {
+  --replay-ink: #eaf2f2;
+  --replay-muted: #a9bdc8;
+  --replay-surface: #111e31;
+  --replay-line: #30445a;
+  --replay-pool: #72d4c3;
+  --replay-lamp: #f2be72;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--replay-line);
+  color: #20374b;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+}
+.decision-replay-header, .decision-replay-stage-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.decision-replay-kicker { color: #14635c; font-size: 12px; letter-spacing: .08em; }
+.decision-replay h3, .decision-replay h4, .decision-replay h5 { color: var(--replay-ink); margin: 0; }
+.decision-replay h3 { margin-top: 6px; font-size: 20px; font-weight: 650; }
+.decision-replay .decision-replay-header h3 { color: #20374b; }
+.decision-replay h4 { font-size: 18px; }
+.decision-replay h5 { font-size: 14px; }
+.decision-replay button, .decision-replay select { min-height: 40px; border: 1px solid var(--replay-line); border-radius: 9px; background: var(--replay-surface); color: var(--replay-ink); box-shadow: none; font: inherit; }
+.decision-replay button { cursor: pointer; padding: 8px 12px; }
+.decision-replay button:hover { border-color: var(--replay-pool); background: #172b3d; transform: none; }
+.decision-replay button:disabled { opacity: .5; cursor: default; }
+.decision-replay button:focus-visible, .decision-replay select:focus-visible, .decision-replay summary:focus-visible, .decision-replay input:focus-visible { outline: 2px solid var(--replay-lamp); outline-offset: 3px; }
+.decision-replay .decision-replay-export { font-size: 12px; }
+.decision-replay-source { display: grid; grid-template-columns: auto minmax(140px, 1fr) auto; align-items: center; gap: 12px; margin: 20px 0 12px; font-size: 13px; }
+.decision-replay-source > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.decision-replay-source select { width: 100%; padding: 8px 12px; }
+.decision-replay-import { display: flex; flex-direction: column; gap: 5px; max-width: 200px; color: #445d6f; font-size: 12px; }
+.decision-replay-import input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; font-size: 11px; }
+.decision-replay-import input::file-selector-button { border: 1px solid var(--replay-line); border-radius: 6px; padding: 5px 8px; margin-right: 6px; color: var(--replay-ink); background: var(--replay-surface); cursor: pointer; }
+.decision-replay-description { margin: 16px 0 10px; color: #20374b; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.decision-replay-boundary { display: flex; flex-wrap: wrap; gap: 6px 14px; color: #445d6f; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.decision-replay-boundary strong { color: #14635c; font-weight: 600; }
+.decision-replay-boundary span:last-child { flex-basis: 100%; }
+.decision-replay-notice { padding: 10px 12px; border-left: 2px solid #96631e; background: #f2f5f7; color: #20374b; line-height: 1.7; font-size: 12px; overflow-wrap: anywhere; }
+.decision-replay-timeline { display: flex; gap: 8px; overflow-x: auto; list-style: none; padding: 8px 3px 14px; margin: 20px 0 12px; scrollbar-color: var(--replay-line) transparent; }
+.decision-replay-timeline li { display: flex; flex: 0 0 auto; }
+.decision-replay-timeline button { display: flex; gap: 9px; align-items: center; text-align: left; font-size: 13px; }
+.decision-replay-timeline button[aria-pressed="true"] { border-color: var(--replay-pool); background: #163b42; }
+.decision-replay-timeline small { display: block; margin-top: 4px; color: var(--replay-muted); font-size: 11px; }
+.decision-replay-step { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid var(--replay-line); border-radius: 50%; font-family: "Cascadia Code", Consolas, monospace; color: var(--replay-pool); }
+.decision-replay-timeline button[aria-pressed="true"] .decision-replay-step { border-color: var(--replay-pool); }
+.decision-replay-stage { border: 1px solid var(--replay-line); border-radius: 12px; background: #0d1929; color: var(--replay-ink); padding: 18px; min-width: 0; }
+.decision-replay-stage-heading { margin-bottom: 16px; }
+.decision-replay-stage-heading > span { color: var(--replay-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.decision-replay-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--replay-line); border-radius: 10px; overflow: hidden; }
+.decision-replay-action-list { min-width: 0; padding: 14px; background: var(--replay-surface); }
+.decision-replay-action-list + .decision-replay-action-list { border-left: 1px solid var(--replay-line); background: #11272f; }
+.decision-replay-action-list h5 { display: flex; justify-content: space-between; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--replay-line); }
+.decision-replay-action-list h5 span { color: var(--replay-muted); font-size: 12px; font-weight: 400; }
+.decision-replay-action-list + .decision-replay-action-list h5 { color: var(--replay-pool); }
+.decision-replay-action-list ul { list-style: none; padding: 0; margin: 0; }
+.decision-replay-action-list li { padding: 13px 0; overflow-wrap: anywhere; }
+.decision-replay-action-list li + li { border-top: 1px solid var(--replay-line); }
+.decision-replay-action-list li > strong { font-size: 14px; }
+.decision-replay code { display: block; color: var(--replay-muted); font-family: "Cascadia Code", Consolas, monospace; font-size: 11px; margin: 6px 0 10px; }
+.decision-replay-parameter { display: inline-block; margin: 4px 8px 4px 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+.decision-replay-action-list li p { color: var(--replay-muted); font-size: 12px; line-height: 1.6; margin: 8px 0 0; }
+.decision-replay-empty { color: var(--replay-muted); font-size: 13px; line-height: 1.7; margin: 12px 0; }
+.decision-replay > .decision-replay-empty { color: #445d6f; }
+.decision-replay-state, .decision-replay-evidence { margin-top: 20px; }
+.decision-replay-table-scroll { margin-top: 10px; overflow-x: auto; }
+.decision-replay table { border-collapse: collapse; width: 100%; font-size: 12px; text-align: left; }
+.decision-replay th, .decision-replay td { padding: 11px 10px; color: var(--replay-ink); border-bottom: 1px solid var(--replay-line); vertical-align: top; overflow-wrap: anywhere; }
+.decision-replay thead th { color: var(--replay-muted); background: var(--replay-surface); font-weight: 400; }
+.decision-replay tbody th { font-weight: 500; }
+.decision-replay tbody th small { display: block; max-width: 200px; color: var(--replay-muted); font-size: 10px; margin-top: 4px; font-family: "Cascadia Code", Consolas, monospace; }
+.decision-replay td:last-child { color: var(--replay-pool); font-variant-numeric: tabular-nums; }
+.decision-replay-evidence dl { margin: 10px 0 0; font-size: 12px; }
+.decision-replay-evidence dl > div { display: grid; grid-template-columns: minmax(100px, .4fr) minmax(0, 1fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--replay-line); }
+.decision-replay-evidence dt { color: var(--replay-muted); overflow-wrap: anywhere; }
+.decision-replay-evidence dd { margin: 0; line-height: 1.65; overflow-wrap: anywhere; }
+.decision-replay-provenance { margin-top: 14px; color: #445d6f; font-size: 12px; line-height: 1.7; }
+.decision-replay-provenance summary { cursor: pointer; padding: 7px 0; }
+.decision-replay-provenance p { overflow-wrap: anywhere; }
+@media (max-width: 650px) {
+  .decision-replay-source { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .decision-replay-import { max-width: none; }
+  .decision-replay-actions { grid-template-columns: minmax(0, 1fr); }
+  .decision-replay-action-list + .decision-replay-action-list { border-left: 0; border-top: 1px solid var(--replay-line); }
+  .decision-replay-stage { padding: 12px; }
+  .decision-replay-evidence dl > div { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .decision-replay th, .decision-replay td { padding: 9px 6px; }
+  .decision-replay tbody th small { max-width: 88px; }
+}

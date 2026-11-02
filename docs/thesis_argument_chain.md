@@ -39,16 +39,20 @@ flowchart LR
 这条链的关键是“问题—机制—可证伪对照—指标—结果—边界”逐项对应。界面功能数量、Agent
 角色数量或演示效果本身都不构成论文贡献。
 
+## 2026-09-09 四阶段补充证据
+
+[四阶段验收记录](four_stage_completion_20260909.md) 已补实际TaskRunner 7200条mock矩阵、300条角色移除记录、适用性审计与三份保存回放。E1只报告开发者状态契约，场景谓词与物理计账有明确限制；下表历史实验仍按其原版本解释，不能跨版本合并差值。personalized与full的本次状态/能耗/舒适结果相同，尚无确认经验单独提升控制的证据。
+
 ## 研究问题与当前答案
 
 | 研究问题 | 核心机制 | 对照与指标 | 当前证据答案 | 状态 |
 | --- | --- | --- | --- | --- |
-| RQ1：动态状态变化时，快照提交能否阻止过期计划，机制开销多大？ | environment revision、偏好指纹、`optimistic_snapshot_commit_v1`、`commit_id` | guarded 与隔离的 unguarded；过期动作提交率、构造状态变化到结果的时延、有效提交率、判定开销 | 100 次确定性交错中 guarded 过期误提交 0%、unguarded 100%，有效提交率均为 100%，中位门禁判定开销约 +0.15 μs，构造状态变化到拒绝/执行结果约 0.291/0.298 ms；30 分钟本地软件仿真另观测到 16 个过期计划均被拒绝 | 隔离比较证据已形成；构造时延不是 presence/真实高优先级事件响应，不外推真实住宅并发风险 |
-| RQ2：固定个性化画像参与规划是否改变多目标结果？ | 固定画像规划注入、配对多目标评价 | 直接效应为 `personalized - single_agent`；`multi_agent_static` 是诊断组；能耗、占用房间舒适度、效用、满意度 | 固定 4 个普通任务簇的 mock 实验中，个性化相对 `single_agent` 的效用 nominal +2.80、disturbed +0.253；舒适度同时为 -5.785、-1.363。本批普通任务中 static 与 single 数值相同，但未预注册为直接效应对照 | 可写固定画像规划的权衡，不可归因于反馈形成过程或声称已由 static 组识别因果效应 |
-| RQ6：显式反馈门禁能否限制反思经验的可见性和权限？ | 确认前后门禁、仅作规划上下文、原子持久化 | pre-confirmation vs post-confirmation；可见性、目标变更、安全越权、写盘失败 | 回归覆盖至少 3 次显式反馈后升格、确认前不暴露、确认后不改写目标/安全约束和失败原子恢复 | 软件机制已验证，控制效用未评估 |
-| RQ3：多智能体安全审查是否产生真实干预？ | 中心编排黑板、安全动作修订、命名故障夹具 | 无审查单智能体 vs 有审查多智能体；注入/检测/阻断、最终计划严重度 | 开窗、强风、过度制冷 3 个机制簇共 126 条记录；单智能体检测但未阻断 18/18，带审查方法均阻断 18/18，安全分差 +80.00，任务簇 bootstrap 95% 区间 [+80.00,+80.00] | 三类构造故障的描述性证据已形成；不能外推总体或真实家庭安全 |
+| RQ1：动态状态变化时，快照提交能否阻止过期计划，机制开销多大？ | environment revision、偏好指纹、`optimistic_snapshot_commit_v1`、`commit_id` | guarded/optimistic、隔离 unguarded、global_lock、optimistic_replan；过期动作提交率、有效提交率、重规划成功率、构造状态变化到结果的时延、判定开销 | 100 次窄实验中 guarded 过期误提交 0%、unguarded 100%，有效提交率均为 100%，中位门禁判定开销约 +0.15 μs；新增 4800 trace 压力矩阵覆盖 4 policy、5 个虚拟 planner delay、4 个 event rate 和 3 个 fault rate。在 event_rate=1.0、fault_rate=0、delay=0 的代表单元中，unguarded 过期提交率 1.0，optimistic 为 0，optimistic_replan 为 0 且 replan success rate 为 1.0；30 分钟本地软件仿真另观测到 16 个过期计划均被拒绝 | 压力矩阵证据已形成；planner delay 是虚拟变量，构造时延不是 presence/真实高优先级事件响应，不外推真实住宅并发风险 |
+| RQ2：固定个性化画像参与规划是否改变多目标结果？ | 固定画像规划注入、配对多目标评价、纵向反馈门控 smoke、建筑/气候/季节 slice adapter | 直接效应为 `personalized - single_agent`；`multi_agent_static` 是诊断组；no memory、static profile、ungated memory、gated confirmed memory；rule baseline、comfort_first、energy_saving、safety_aware；能耗、占用房间舒适度、效用、confirmed prior visibility、comfort violation | 固定 4 个普通任务簇的 mock 实验中，个性化相对 `single_agent` 的效用 nominal +2.80、disturbed +0.253；舒适度同时为 -5.785、-1.363。本批普通任务中 static 与 single 数值相同，但未预注册为直接效应对照。纵向 smoke：4 methods x 2 profiles x 5 turns = 40 records；gated_confirmed_memory 只在第 3 次显式正向反馈后暴露 confirmed_experience，post-pre proxy utility +12.229；ungated_memory proxy utility +8.725 但记录 8 次未经确认 prior exposure；static_profile 高效用但无纵向增益。建筑能耗 slice smoke：64 records；energy_saving 平均日能耗 16.21205 kWh，低于 rule_baseline 20.17500 kWh，但平均舒适违约 140 分钟；safety_aware 平均日能耗 17.65312 kWh 且本 slice 舒适违约为 0 | 可写固定画像、feedback-gated smoke 与合成 building slice 中的权衡；不可把 proxy utility 或 synthetic slice 写成完整端到端效用、真实 BOPTEST/CASAS 或现场节能结论 |
+| RQ6：显式反馈门禁能否限制反思经验的可见性和权限？ | 确认前后门禁、仅作规划上下文、原子持久化、unauthorized prior exposure 对照 | pre-confirmation vs post-confirmation；可见性、目标变更、安全越权、写盘失败、unauthorized prior exposure | 回归覆盖至少 3 次显式反馈后升格、确认前不暴露、确认后不改写目标/安全约束和失败原子恢复。新增纵向 smoke 中 gated_confirmed_memory 在 turn 1-2 不暴露 confirmed_experience、turn 3-5 confirmed_visibility_rate=1.0；ungated_memory 不通过确认门禁且记录 8 次 unauthorized prior exposure；所有方法 safety_override_count=0 | 反馈门禁纵向机制已验证；当前仍是组件级软件 smoke，端到端控制效用和真实住户长期偏好未评估 |
+| RQ3：多智能体安全审查是否产生真实干预？ | 中心编排黑板、安全动作修订、critic 修订轨迹、命名故障夹具、15 类 safety fault taxonomy、RAG 知识条件风险来源 | 无审查单智能体 vs 有审查多智能体；single、planner-only、+safety、+critic、+feedback、full 角色消融；no RAG、correct/stale/conflicting/malicious RAG；注入/检测/阻断、action-change、最终计划严重度、instruction hierarchy violation | 开窗、强风、过度制冷 3 个机制簇共 126 条记录；单智能体检测但未阻断 18/18，带审查方法均阻断 18/18，安全分差 +80.00，任务簇 bootstrap 95% 区间 [+80.00,+80.00]。15 类 taxonomy smoke 中 12 个 high fault 全部阻断，3 个 medium energy conflict 只告警不阻断。角色消融 smoke 显示 +safety/full 处理 high_safety_fault，+critic/full 处理 medium_energy_conflict。RAG 知识条件 smoke：3 tasks x 5 conditions x 2 review modes = 30 records；no_rag/correct_rag 的 planner_only unsafe action rate=0，stale/conflicting/malicious 的 planner_only unsafe action rate=1.0；safety_review 将 high fault 清零，但保留 medium energy conflict 为 unsafe_action_rate_after_review=0.3333；malicious_rag instruction_hierarchy_violation_rate=1.0 | 15 类构造 taxonomy、角色消融和 RAG 知识条件 smoke 已形成；RAG smoke 使用合成 source-labelled knowledge，不改生产 RAG index，不测真实检索污染召回，不外推总体、多智能体全面优越或真实家庭安全 |
 | RQ4：证据契约能否让实验与结论可追溯？ | mock/real 来源、任务/runner SHA-256、指标适用性、签名清单、fail-closed 校验 | 构造缺来源、错指标、篡改产物和不完整证据 | 36 任务、3 次隔离重复、648 条 mock 稳定性记录；错误产物与越界证据由回归门禁拒绝 | 软件方法证据已形成 |
-| RQ5：真实本地模型相对规则语义基线表现如何？ | 固定 qwen3:8b digest、`semantic_reference_v4`、隔离重复指纹 | qwen3:8b vs `rule-based-mock-v1`；语义准确性、稳定性、延迟、失败率 | 36 任务×3 重复共 216 条运行成功记录；覆盖率/准确率取主重复、每组 n=36，qwen 的意图/控制方向/设备 F1 为 77.78%/77.78%/56.59%，规则基线为 66.67%/27.78%/47.13%；全部重复仅用于稳定性；qwen 目标精确匹配 25.00% vs 61.11%，平均响应 3693.22 ms vs 433.37 ms，能耗和舒适度也更差 | 版本固定真实模型描述性比较已完成；运行成功不等于语义正确；独立人工标签审查仍是唯一外部研究证据阻塞项 |
+| RQ5：真实本地模型相对规则语义基线表现如何？ | 固定 qwen3:8b digest、`semantic_reference_v4`、隔离重复指纹 | qwen3:8b vs `rule-based-mock-v1`；语义准确性、稳定性、延迟、失败率 | 36 任务×3 重复共 216 条运行成功记录；覆盖率/准确率取主重复、每组 n=36，qwen 的意图/控制方向/设备 F1 为 77.78%/77.78%/56.59%，规则基线为 66.67%/27.78%/47.13%；全部重复仅用于稳定性；qwen legacy默认目标精确匹配 25.00% vs 61.11%（新增显式目标适用分母均为0，准确率N/A），平均响应 3693.22 ms vs 433.37 ms，能耗和舒适度也更差 | 版本固定真实模型描述性比较已完成；运行成功不等于语义正确；独立人工标签审查仍是唯一外部研究证据阻塞项 |
 
 ## 当前结果应该怎样解释
 
@@ -70,7 +74,7 @@ flowchart LR
 
 固定 digest 的 qwen3:8b 已完成 36 任务、3 次隔离重复，与规则语义基线共形成 216 条记录且运行成功率均为 100%；这里的“运行成功”只表示无 runtime error，不表示语义正确或任务完成。
 覆盖率与准确率使用预注册的主重复（每组 n=36），其余两次重复用于稳定性。qwen 提高了意图准确率（+11.11 个百分点）、控制方向准确率（+50.00 个百分点）、设备 F1（+9.46 个百分点）和完成率（+2.78 个百分点），
-但目标精确匹配降低 36.11 个百分点、目标范围 IoU 降低 12.66 个百分点，平均响应增加约 3.26 秒，能耗与占用房间舒适度也更差。
+旧legacy默认目标精确匹配降低36.11个百分点、范围IoU降低12.66个百分点；适用性审计发现本批无显式数字目标，新口径分母0、准确率N/A，因此不能据旧值判断显式参数理解能力。平均响应增加约3.26秒，能耗与占用房间舒适度也更差。
 语义/计划精确重复稳定性为 91.67%/97.22%，低于规则基线的 100%/100%。因此可写“自然语言整体意图与控制方向改善，但参数控制、效率和稳定性存在代价”，不可写“LLM 全面优于规则系统”。
 
 ### 长期运行只支持本窗口稳定性
@@ -152,3 +156,7 @@ RQ1 的 guarded/unguarded 隔离对照、RQ3 的三个故障机制任务簇，�
 ```powershell
 .\backend\.venv\Scripts\python.exe scripts\validate_thesis_claims.py --require-generated-evidence --require-submission-ready
 ```
+
+## 2026-10-27 全屋物理仿真覆盖补充
+
+EnergyPlus 已从单房间示例扩展为用户设计户型的九热区，共用空间多边形且修正餐厅/走廊重叠。夏冬各一次 rule/Harness mock 单日配对均完成 288 时间点、2592 房间样本、0 severe，房间/全屋模拟电量按 SQLite 对账残差 0 J；产物为 `data/results/energyplus/comparisons/whole-home-summer-20261027-v2/comparison.json` 与 `whole-home-winter-20261027-v2/comparison.json`。这些产物支持空间覆盖、运行闭环和模拟账目一致性，不支持个性化收益、模型优势、节能或现场效果。层高、围护结构、天气、固定占用/换气和灯具响应仍未实测校准；窗帘未映射，餐厅/走廊无设计外窗。此前单房间真实 DeepSeek 证据不能转移为全屋真实模型证据；RQ5 独立人工审查仍阻塞。

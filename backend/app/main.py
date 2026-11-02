@@ -27,6 +27,7 @@ from app.research import (
 )
 from app.research.personalization import UserPreferenceUpdate
 from app.schemas.action_schema import DeviceActionRequest, DeviceActionResponse
+from app.energyplus.routes import router as energyplus_router
 from app.schemas.state_schema import ComfortState, DeviceState, EnergyState, RoomId, RoomState, SmartHomeState, WeatherType
 from app.schemas.task_schema import AgentCommandRequest, AgentCommandResponse, RagQueryRequest, TaskRequest, TaskResponse
 from app.simulation.life_simulation import LifeSimulationStartRequest, LifeSimulationStatus
@@ -38,6 +39,8 @@ load_dotenv(PROJECT_ROOT / "backend" / ".env.local")
 load_dotenv(PROJECT_ROOT / "backend" / ".env")
 configure_logging()
 app = FastAPI(title="LLM Smart Home Simulation API", version="0.3.0")
+
+app.include_router(energyplus_router)
 
 
 def _get_cors_origins() -> list[str]:
@@ -71,6 +74,8 @@ session_store = SimulationSessionStore(PROJECT_ROOT, LOG_DIR)
 
 
 def get_runtime(request: Request) -> SimulationRuntime:
+    if os.getenv("LLM_MODE", "real").strip().lower() != "real":
+        raise HTTPException(status_code=503, detail="Online runtime requires LLM_MODE=real; mock is disabled.")
     try:
         return session_store.get(request.headers.get("X-Simulation-Session"))
     except ValueError as exc:

@@ -366,7 +366,7 @@ def test_agent_health_network_probe_does_not_hold_resident_runtime_lock(monkeypa
     assert response.json()["success"] is True
 
 
-def test_private_memory_api_is_session_isolated_and_records_command_reflection(monkeypatch) -> None:
+def test_private_memory_api_is_session_isolated_and_records_command_reflection(monkeypatch, isolated_api_runtime) -> None:
     monkeypatch.setenv("LLM_MODE", "mock")
     client = TestClient(app)
     session_a = f"private-memory-a-{uuid4().hex}"
@@ -398,7 +398,7 @@ def test_private_memory_api_is_session_isolated_and_records_command_reflection(m
     assert memory_b["reflections"] == []
 
 
-def test_autonomous_sensor_tick_runs_shared_agent_path_and_reflects(monkeypatch) -> None:
+def test_autonomous_sensor_tick_runs_shared_agent_path_and_reflects(monkeypatch, isolated_api_runtime) -> None:
     monkeypatch.setenv("LLM_MODE", "mock")
     client = TestClient(app)
     session_id = f"autonomy-{uuid4().hex}"
@@ -423,7 +423,7 @@ def test_autonomous_sensor_tick_runs_shared_agent_path_and_reflects(monkeypatch)
     assert payload["reflection_count"] == 1
 
 
-def test_backend_autonomy_start_status_stop_and_memory_reset_api(monkeypatch) -> None:
+def test_backend_autonomy_start_status_stop_and_memory_reset_api(monkeypatch, isolated_api_runtime) -> None:
     monkeypatch.setenv("LLM_MODE", "mock")
     client = TestClient(app)
     session_id = f"formed-autonomy-{uuid4().hex}"

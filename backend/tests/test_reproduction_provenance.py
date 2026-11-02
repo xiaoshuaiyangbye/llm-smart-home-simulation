@@ -681,12 +681,33 @@ def test_repeat_stability_refuses_to_label_repeatable_failures_as_stable() -> No
     assert summary[0]["plan_action_exact_stability_percent"] is None
 
 
-def test_report_labels_runtime_success_separately_from_semantic_correctness(tmp_path: Path) -> None:
+def test_report_labels_runtime_success_separately_from_semantic_correctness(tmp_path: Path, monkeypatch) -> None:
     """A successful runner response must not be presented as semantic task success."""
     group = reproduction_experiments.GROUPS_BY_ID["rule_semantic_full"]
     task = reproduction_experiments.load_tasks(
         PROJECT_ROOT / "data" / "tasks" / "reproduction_tasks.json"
     )[0]
+
+    def successful_response_with_wrong_intent(runner, request):
+        # The report contract must not depend on a historical parser error
+        # continuing to exist after semantic-control fixes.
+        semantic = reproduction_experiments.expected_semantic_from_task(task)
+        semantic["intent"] = "injected_wrong_intent"
+        return SimpleNamespace(
+            success=True,
+            semantic_result=semantic,
+            plan_result={"actions": []},
+            execution_result={"executed_count": 0},
+            feedback_result={"completed": False, "correction_round": 0},
+            final_state=runner.environment.get_state(refresh_realtime=False),
+            error="",
+        )
+
+    monkeypatch.setattr(
+        reproduction_experiments.TaskRunner,
+        "run_agent_command",
+        successful_response_with_wrong_intent,
+    )
     record = reproduction_experiments.run_group(group, [task], tmp_path, real_mode="mock")[0]
     summary = {
         "generated_at": "test",

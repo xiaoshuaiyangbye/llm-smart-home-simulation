@@ -49,6 +49,14 @@
 
 API 响应中的 `agent_output` 包含 `semantic_result`、`planning_result`、`execution_result`、`feedback_result`、`actions`、`final_state` 和 `multi_agent_blackboard`。前端在 `frontend/src/components/AgentOutputPanel.tsx` 中展示相关内容。
 
+## 显式工作流图契约
+
+`multi_agent_workflow_v1` 将上述可观察阶段声明为版本化的有向图：节点为 `orchestrator`、上下文、检索、语义、审查、规划、执行、反馈和可选评价阶段；边描述允许的阶段转换。每次 `TaskRunner` 成功完成命令后，`multi_agent_blackboard.workflow_graph` 会返回图的版本、节点、边以及该次阶段 trace 的 `trace_validation`。这使阶段跳过、未知角色或未声明的相邻转换可被程序检测。
+
+图仍是中心编排的可审计软件契约，不是去中心化的自主协商系统。批评修订和反馈校正仍由现有确定性逻辑控制：前者最多一次修订复审，后者最多 3 轮；本版本记录可观察阶段顺序，不将内部修订细节伪装成独立的异步智能体消息。
+
+该图 trace 证明一次本地软件运行遵循了声明的阶段顺序；它不证明任何角色提升了任务效果，不构成真实设备安全、现场验证或模型能力证据。
+
 ## RAG 与实现边界
 
 RAG 默认读取 `docs/*.md`、`backend/app/config/*.yaml` 和 `data/tasks/*.json`。默认离线模式使用确定性词法检索；在 `RAG_RETRIEVAL_MODE=local_embedding` 下，可通过本地 Ollama 嵌入模型执行向量与词法混合检索。两种模式均可追溯来源，缓存不匹配时会重建。

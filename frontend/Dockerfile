@@ -7,6 +7,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 COPY frontend ./
+COPY data/energyplus/home_layout.json /app/data/energyplus/home_layout.json
 
 ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL

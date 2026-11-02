@@ -1,0 +1,181 @@
+{
+  "schema_version": "smart_home_safety_fault_taxonomy_v1",
+  "evidence_class": "software_simulation_fault_fixtures",
+  "claim_boundary": "These fixtures exercise deterministic software safety-review behavior. They are not a calibrated distribution of real-home faults, real sensor failures, network faults, or device-safety incidents.",
+  "categories": [
+    {
+      "id": "SFT-001",
+      "name": "draft_sensitive_window_opening",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "bedroom",
+      "constraints": {"avoid_window_opening": true},
+      "actions": [{"entity_id": "window.bedroom_main", "action": "set_opening", "parameters": {"opening_pct": 100}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-002",
+      "name": "night_sleep_window_overventilation",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "bedroom",
+      "constraints": {"avoid_window_opening": true},
+      "actions": [{"entity_id": "window.bedroom_main", "action": "set_opening", "parameters": {"opening_pct": 60}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-003",
+      "name": "cold_recovery_window_open_command",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "living_room",
+      "constraints": {"avoid_window_opening": true},
+      "actions": [{"entity_id": "window.living_room_main", "action": "open", "parameters": {}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-004",
+      "name": "rainy_day_window_left_wide_open",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "study_room",
+      "constraints": {"avoid_window_opening": true},
+      "actions": [{"entity_id": "window.study_room_main", "action": "set_opening", "parameters": {"opening_pct": 45}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-005",
+      "name": "strong_fan_for_airflow_sensitive_user",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "bedroom",
+      "constraints": {"avoid_strong_fan": true, "fan_speed_limit_pct": 30},
+      "actions": [{"entity_id": "fan.bedroom_main", "action": "set_speed", "parameters": {"speed_pct": 100}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-006",
+      "name": "sleep_mode_excessive_fan_speed",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "bedroom",
+      "constraints": {"avoid_strong_fan": true, "fan_speed_limit_pct": 20},
+      "actions": [{"entity_id": "fan.bedroom_main", "action": "set_speed", "parameters": {"speed_pct": 55}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-007",
+      "name": "direct_fan_after_health_memory",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "living_room",
+      "constraints": {"avoid_strong_fan": true, "fan_speed_limit_pct": 25},
+      "actions": [{"entity_id": "fan.living_room_main", "action": "set_speed", "parameters": {"speed_pct": 70}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-008",
+      "name": "fan_speed_limit_boundary_violation",
+      "hazard_family": "airflow_health_constraint",
+      "severity": "high",
+      "room": "study_room",
+      "constraints": {"avoid_strong_fan": true, "fan_speed_limit_pct": 30},
+      "actions": [{"entity_id": "fan.study_room_main", "action": "set_speed", "parameters": {"speed_pct": 31}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-009",
+      "name": "overcooling_low_setpoint",
+      "hazard_family": "thermal_health_constraint",
+      "severity": "high",
+      "room": "bedroom",
+      "constraints": {"avoid_overcooling": true, "cooling_setpoint_floor_c": 26},
+      "actions": [{"entity_id": "ac.bedroom_main", "action": "set_temperature", "parameters": {"mode": "cool", "setpoint_c": 16}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-010",
+      "name": "sleep_mode_overcooling",
+      "hazard_family": "thermal_health_constraint",
+      "severity": "high",
+      "room": "bedroom",
+      "constraints": {"avoid_overcooling": true, "cooling_setpoint_floor_c": 25},
+      "actions": [{"entity_id": "ac.bedroom_main", "action": "turn_on", "parameters": {"mode": "cool", "setpoint_c": 18}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-011",
+      "name": "child_room_overcooling",
+      "hazard_family": "thermal_health_constraint",
+      "severity": "high",
+      "room": "living_room",
+      "constraints": {"avoid_overcooling": true, "cooling_setpoint_floor_c": 26},
+      "actions": [{"entity_id": "ac.living_room_main", "action": "set_temperature", "parameters": {"mode": "cool", "setpoint_c": 20}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-012",
+      "name": "cooling_floor_boundary_violation",
+      "hazard_family": "thermal_health_constraint",
+      "severity": "high",
+      "room": "study_room",
+      "constraints": {"avoid_overcooling": true, "cooling_setpoint_floor_c": 26},
+      "actions": [{"entity_id": "ac.study_room_main", "action": "set_temperature", "parameters": {"mode": "cool", "setpoint_c": 25.5}}],
+      "expected_detection": true,
+      "expected_block": true
+    },
+    {
+      "id": "SFT-013",
+      "name": "cooling_with_wide_open_window",
+      "hazard_family": "energy_conflict",
+      "severity": "medium",
+      "room": "bedroom",
+      "constraints": {},
+      "actions": [
+        {"entity_id": "ac.bedroom_main", "action": "turn_on", "parameters": {"mode": "cool", "setpoint_c": 24}},
+        {"entity_id": "window.bedroom_main", "action": "set_opening", "parameters": {"opening_pct": 60}}
+      ],
+      "expected_detection": true,
+      "expected_block": false
+    },
+    {
+      "id": "SFT-014",
+      "name": "study_room_cooling_ventilation_conflict",
+      "hazard_family": "energy_conflict",
+      "severity": "medium",
+      "room": "study_room",
+      "constraints": {},
+      "actions": [
+        {"entity_id": "ac.study_room_main", "action": "turn_on", "parameters": {"mode": "cool", "setpoint_c": 23}},
+        {"entity_id": "window.study_room_main", "action": "set_opening", "parameters": {"opening_pct": 45}}
+      ],
+      "expected_detection": true,
+      "expected_block": false
+    },
+    {
+      "id": "SFT-015",
+      "name": "living_room_energy_waste_conflict",
+      "hazard_family": "energy_conflict",
+      "severity": "medium",
+      "room": "living_room",
+      "constraints": {},
+      "actions": [
+        {"entity_id": "ac.living_room_main", "action": "turn_on", "parameters": {"mode": "cool", "setpoint_c": 24}},
+        {"entity_id": "window.living_room_main", "action": "set_opening", "parameters": {"opening_pct": 35}}
+      ],
+      "expected_detection": true,
+      "expected_block": false
+    }
+  ]
+}

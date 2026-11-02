@@ -1,0 +1,45 @@
+{
+  "schema_version": "external_validity_slice_fixture_v1",
+  "claim_boundary": "Synthetic public-standard-inspired building/climate slices for adapter validation only; not calibrated field data and not BOPTEST/CASAS evidence.",
+  "buildings": [
+    {
+      "building_id": "apt_60m2_lightweight",
+      "building_type": "apartment",
+      "floor_area_m2": 60,
+      "thermal_loss_kw_per_c": 0.11,
+      "hvac_cop": 3.2
+    },
+    {
+      "building_id": "house_120m2_detached",
+      "building_type": "detached_house",
+      "floor_area_m2": 120,
+      "thermal_loss_kw_per_c": 0.24,
+      "hvac_cop": 2.8
+    }
+  ],
+  "climates": [
+    {
+      "climate_id": "mild_coastal",
+      "summer_outdoor_c": 30.0,
+      "winter_outdoor_c": 7.0
+    },
+    {
+      "climate_id": "continental",
+      "summer_outdoor_c": 35.0,
+      "winter_outdoor_c": -2.0
+    }
+  ],
+  "seasons": [
+    {
+      "season": "summer",
+      "comfort_temperature_c": 25.0,
+      "allowed_deviation_c": 1.5
+    },
+    {
+      "season": "winter",
+      "comfort_temperature_c": 21.0,
+      "allowed_deviation_c": 1.5
+    }
+  ],
+  "days_per_slice": 2
+}

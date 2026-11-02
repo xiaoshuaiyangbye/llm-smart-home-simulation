@@ -68,7 +68,18 @@ def test_runner_records_collaboration_stages_and_context(monkeypatch, tmp_path) 
     assert context["critic_result"]["revision"]["phase"] == "critic_revision"
 
 
-def test_agent_command_stream_emits_live_stages_and_completion(monkeypatch) -> None:
+def test_runner_publishes_a_valid_workflow_graph_trace(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("LLM_MODE", "mock")
+    runner = TaskRunner(SmartHomeEnvironment(), ExperimentLogger(tmp_path))
+
+    response = runner.run_agent_command(AgentCommandRequest(user_command="turn on the living room light"))
+
+    workflow = response.multi_agent_blackboard["workflow_graph"]
+    assert workflow["version"] == "multi_agent_workflow_v1"
+    assert workflow["trace_validation"] == {"valid": True, "violations": []}
+
+
+def test_agent_command_stream_emits_live_stages_and_completion(monkeypatch, isolated_api_runtime) -> None:
     monkeypatch.setenv("LLM_MODE", "mock")
     client = TestClient(app)
 

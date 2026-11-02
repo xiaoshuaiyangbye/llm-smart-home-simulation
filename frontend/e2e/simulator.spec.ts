@@ -12,6 +12,8 @@ test("默认 2D 视图可推进仿真并切换到延迟加载的 3D 视图", asy
   await expect(twoDimensional).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(".home-plan-2d svg")).toBeVisible();
 
+  await page.getByRole("navigation", { name: "功能页面" }).getByRole("button", { name: "设备控制", exact: true }).click();
+  await page.getByText("调整模拟天气与时间", { exact: true }).click();
   const step = page.getByRole("button", { name: "单步仿真" });
   await expect(step).toBeEnabled();
   const stepResponse = page.waitForResponse((response) => (
@@ -21,6 +23,7 @@ test("默认 2D 视图可推进仿真并切换到延迟加载的 3D 视图", asy
   expect((await stepResponse).ok()).toBe(true);
   await expect(page.getByText(/已推进 1 分钟仿真/)).toBeVisible();
 
+  await page.getByRole("navigation", { name: "功能页面" }).getByRole("button", { name: "住宅总览", exact: true }).click();
   const threeDimensional = page.getByRole("button", { name: /3D/ });
   await threeDimensional.click();
   await expect(threeDimensional).toHaveAttribute("aria-pressed", "true");
@@ -46,8 +49,7 @@ test("人物进入卫生间时将真实占用事件同步给后端", async ({ pa
     }
     return response.request().postDataJSON().current_room_id === "bathroom";
   });
-  for (let step = 0; step < 25; step += 1) await page.keyboard.press("d");
-  for (let step = 0; step < 12; step += 1) await page.keyboard.press("w");
+  await page.getByRole("button", { name: "选择卫生间", exact: true }).click();
 
   const response = await bathroomPresence;
   expect(response.ok()).toBe(true);
@@ -92,8 +94,7 @@ test("人员位置同步失败时回滚界面位置", async ({ page }) => {
     }
     await route.continue();
   });
-  for (let step = 0; step < 25; step += 1) await page.keyboard.press("d");
-  for (let step = 0; step < 12; step += 1) await page.keyboard.press("w");
+  await page.getByRole("button", { name: "选择卫生间", exact: true }).click();
 
   await expect(page.getByText(/网络连接失败|无法同步当前房间/)).toBeVisible();
   await expect(page.getByText("W/A/S/D 移动“我”：当前在 客厅")).toBeVisible();
@@ -111,6 +112,7 @@ test("后端状态请求失败时向用户显示连接错误", async ({ page }) 
 });
 
 test("提交指令时展示中心编排的实时协作轨迹", async ({ page }) => {
+  await page.getByRole("navigation", { name: "功能页面" }).getByRole("button", { name: "家庭助手", exact: true }).click();
   await page.getByLabel("指令输入").fill("打开客厅灯光");
   const streamResponse = page.waitForResponse((response) => (
     response.url().endsWith("/api/agent/command/stream") && response.request().method() === "POST"
@@ -119,6 +121,7 @@ test("提交指令时展示中心编排的实时协作轨迹", async ({ page }) 
   expect((await streamResponse).ok()).toBe(true);
   await expect(page.getByRole("button", { name: "发送指令" })).toBeEnabled({ timeout: 20_000 });
 
+  await page.getByText("查看推理、协作与执行详情", { exact: true }).click();
   await page.getByRole("tab", { name: "A2A 对话" }).click();
   await expect(page.getByText("中心编排消息记录，不代表去中心化 A2A 协议。")).toBeVisible();
   await expect(page.getByText(/编排器 → 上下文 Agent/)).toBeVisible();
@@ -127,6 +130,7 @@ test("提交指令时展示中心编排的实时协作轨迹", async ({ page }) 
 });
 
 test("私有知识库与持续自治循环可在界面启用并产生反思", async ({ page }) => {
+  await page.getByRole("navigation", { name: "功能页面" }).getByRole("button", { name: "自动运行", exact: true }).click();
   await page.getByText("家庭成员习惯与隐私设置", { exact: true }).click();
   await page.getByLabel("健康与安全约束").fill("怕风，睡眠时避免直吹");
   await page.getByLabel("睡眠与生活习惯").fill("夜间浅睡，23:00 入睡");

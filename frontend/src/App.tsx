@@ -1,3 +1,6 @@
+import { WorkspaceNavigation, workspacePages, type WorkspacePage } from "./components/WorkspaceNavigation";
+import { homeGeometry } from "./data/homeGeometry";
+import { moveWithinHome, roomAtPosition } from "./data/homeMovement";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -40,11 +43,13 @@ import { HomePlan2D } from "./scene/HomePlan2D";
 import type { AgentHealth, AgentOutput, AgentTraceStage, AutonomousRuntimeStatus, DeviceActionRequest, HistoryPoint, LifeSimulationDuration, LifeSimulationStatus, PrivateUserMemory, RobustnessConfig, RoomId, SmartHomeState, UserPreferenceProfile, WeatherType } from "./types/state";
 import "./styles.css";
 import "./styles-mi-home.css";
+import "./styles-workspace.css";
 
 const HouseScene = lazy(async () => {
   const module = await import("./scene/HouseScene");
   return { default: module.HouseScene };
 });
+const EnergyPlusPanel = lazy(() => import("./components/EnergyPlusPanel"));
 
 const ROOM_LABELS: Record<RoomId, string> = {
   living_room: "客厅",
@@ -58,29 +63,7 @@ const ROOM_LABELS: Record<RoomId, string> = {
   corridor: "走廊",
 };
 
-const ROOM_AREAS: Array<{ id: RoomId; x: number; z: number; w: number; d: number }> = [
-  { id: "bedroom", x: -4.4, z: -2.22, w: 4.2, d: 3.36 },
-  { id: "study_room", x: -0.35, z: -2.22, w: 3.9, d: 3.36 },
-  { id: "bathroom", x: 3.05, z: -2.22, w: 2.9, d: 3.36 },
-  { id: "living_room", x: -3.95, z: 1.08, w: 5.1, d: 3.24 },
-  { id: "dining_room", x: 0.55, z: 1.08, w: 3.9, d: 3.24 },
-  { id: "kitchen", x: 4.0, z: 1.08, w: 3.0, d: 3.24 },
-  { id: "laundry", x: 1.4, z: 3.9, w: 2.4, d: 2.4 },
-  { id: "balcony", x: -6.35, z: 3.45, w: 1.75, d: 2.35 },
-  { id: "corridor", x: -0.7, z: 2.95, w: 6.0, d: 0.5 },
-];
-
-const ROOM_AVATAR_POSITIONS: Record<RoomId, { x: number; z: number }> = {
-  living_room: { x: -3.85, z: 1.25 },
-  bedroom: { x: -4.35, z: -2.1 },
-  study_room: { x: -0.35, z: -2.12 },
-  dining_room: { x: 0.55, z: 1.05 },
-  kitchen: { x: 4.0, z: 1.02 },
-  bathroom: { x: 3.05, z: -2.12 },
-  laundry: { x: 1.4, z: 3.9 },
-  balcony: { x: -6.35, z: 3.45 },
-  corridor: { x: -0.7, z: 2.95 },
-};
+const ROOM_AVATAR_POSITIONS = Object.fromEntries(homeGeometry.map((room) => [room.id, { x: room.x, z: room.z }])) as Record<RoomId, { x: number; z: number }>;
 
 function formatClockTime(state: SmartHomeState): string {
   const { time_hour: hour, time_minute: minute } = state.outdoor_environment;
@@ -92,6 +75,25 @@ export default function App() {
   const [agentOutput, setAgentOutput] = useState<AgentOutput | null>(null);
   const [liveAgentStages, setLiveAgentStages] = useState<AgentTraceStage[]>([]);
   const [command, setCommand] = useState("");
+  const [energyPlusOpen, setEnergyPlusOpen] = useState(false);
+  const [activePage, setActivePage] = useState<WorkspacePage>(() => {
+    const page = window.location.hash.slice(1);
+    return page in workspacePages ? page as WorkspacePage : "overview";
+  });
+  function navigate(page: WorkspacePage) {
+    setActivePage(page);
+    window.history.pushState(null, "", `#${page}`);
+    window.scrollTo({ top: 0 });
+  }
+  useEffect(() => {
+    const syncPage = () => {
+      const page = window.location.hash.slice(1);
+      setActivePage(page in workspacePages ? page as WorkspacePage : "overview");
+    };
+    window.addEventListener("popstate", syncPage);
+    window.addEventListener("hashchange", syncPage);
+    return () => { window.removeEventListener("popstate", syncPage); window.removeEventListener("hashchange", syncPage); };
+  }, []);
   const [avatarPosition, setAvatarPosition] = useState({ x: -3.85, z: 1.25 });
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -153,9 +155,8 @@ export default function App() {
     fetchRobustnessConfig().then(setRobustnessConfig).catch(() => setRobustnessConfig(null));
   }, [authRequired, isAuthenticated]);
 
-  const sceneTitle = "我的家";
 
-  const currentRoomId = useMemo(() => getRoomAtPosition(avatarPosition), [avatarPosition]);
+  const currentRoomId = useMemo(() => roomAtPosition(avatarPosition) ?? "living_room", [avatarPosition]);
   const currentRoomName = ROOM_LABELS[currentRoomId];
   const isLifeSimulationActive = Boolean(lifeSimulation?.active);
   const isAutonomyActive = Boolean(autonomyStatus?.active);
@@ -163,6 +164,8 @@ export default function App() {
   const canStartLifeSimulation = agentHealth?.success === true && agentHealth.llm_mode === "real" && !isAutonomyActive;
   const lifeSimulationUnavailableReason = isAutonomyActive
     ? "请先停止后端自治服务，再启动生活快速仿真。"
+    : agentHealth?.llm_mode === "mock"
+    ? "生活推演需要已连接的真实模型。当前可使用手动控制、家庭助手的模拟语义或物理实验。"
     : agentHealth
     ? agentHealth.error ?? "生活仿真需要已验证的真实 LLM 服务。"
     : "正在检查真实 LLM 服务，请稍后重试。";
@@ -171,10 +174,10 @@ export default function App() {
   const showAvatar = !isLifeSimulationActive || Boolean(lifeSimulation?.current_room_id);
   const displayedState = state;
   const focusedRoom = displayedState?.rooms.find((room) => room.room_id === sceneCurrentRoomId);
-  const focusedComfort = displayedState?.comfort_metrics.rooms.find((room) => room.room_id === sceneCurrentRoomId);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
+      if (activePage !== "overview" || !presenceHydrated) return;
       if (isLifeSimulationActive) return;
       if (isEditableTarget(event.target)) return;
       const key = event.key.toLowerCase();
@@ -187,12 +190,12 @@ export default function App() {
         if (key === "s") next.z += speed;
         if (key === "a") next.x -= speed;
         if (key === "d") next.x += speed;
-        return clampToHome(next);
+        return moveWithinHome(position, next);
       });
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLifeSimulationActive]);
+  }, [isLifeSimulationActive, activePage, presenceHydrated]);
 
   useEffect(() => {
     if (!isLifeSimulationActive) return;
@@ -502,68 +505,49 @@ export default function App() {
   }
 
   return (
-    <main className={`app-shell${isScreenshotMode ? " screenshot-mode" : ""}`}>
-      <aside className="home-nav" aria-label="住宅中控导航">
-        <a className="nav-home" href="#home-overview" aria-label="返回住宅总览">
-          <span className="brand-mark" aria-hidden="true"><i /></span>
-          <span className="nav-home-copy"><strong>我的家</strong><small>R1 私人住宅</small></span>
-        </a>
-        <nav>
-          <a className="active" href="#home-overview"><span className="nav-icon nav-icon-home" aria-hidden="true" />首页</a>
-          <a href="#autonomy"><span className="nav-icon nav-icon-pulse" aria-hidden="true" />自动化</a>
-          <a href="#home-agent"><span className="nav-icon nav-icon-agent" aria-hidden="true" />家庭助手</a>
-          <a href="#telemetry"><span className="nav-icon nav-icon-data" aria-hidden="true" />全屋状态</a>
-        </nav>
-        <div className="nav-resident-wrap"><span className="nav-resident" aria-label="当前住户 R1">R1</span><span>本地住户</span></div>
-      </aside>
+    <main className={`app-shell workspace-mode${isScreenshotMode ? " screenshot-mode" : ""}`}>
+      <WorkspaceNavigation active={activePage} onNavigate={navigate} />
       <div className="app-content">
       <header className="topbar">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true"><i /></span>
           <span className="brand-copy">
-            <strong>智能家庭</strong>
-            <small>设备与自动化</small>
+            <strong>{workspacePages[activePage].label}</strong>
+            <small>{activePage === "experiments" ? "EnergyPlus 建筑物理仿真" : "生活模拟工作空间"}</small>
           </span>
         </div>
         <div className="topbar-meta" aria-label="simulation status">
-          <span><small>天气</small>{state?.outdoor_environment.weather ?? "cloudy"}</span>
+          <span><small>天气</small>{{ sunny: "晴天", cloudy: "多云", overcast: "阴天", rainy: "雨天" }[state?.outdoor_environment.weather ?? "cloudy"]}</span>
           <span><small>室外</small>{state ? `${state.outdoor_environment.outdoor_temperature_c.toFixed(0)}°C` : "--"}</span>
           <span><small>住宅时间</small>{state ? formatClockTime(state) : "--"}</span>
           <span><small>感知</small>{focusedRoom?.occupancy ? "有人" : "空闲"}</span>
         </div>
         <div className="topbar-actions">
-          <span className="status-pill"><i />家庭在线</span>
+          <span className="status-pill"><i />{state ? "本地服务已连接" : "正在连接服务"}</span>
           <span className="resident-badge" aria-label="本地住户空间">R1</span>
         </div>
       </header>
       <section className="workspace-panel" id="home-overview">
-        <div className="workspace-heading">
-          <div className="breadcrumb-line">
-            <span>HOME</span>
-            <i aria-hidden="true" />
-            <div>
-              <h1>{sceneTitle}</h1>
-              <p>晚上好，家里的设备与环境都在这里。</p>
-            </div>
-            <span className={isLifeSimulationActive ? "live-badge active" : "live-badge"}>
-              {isLifeSimulationActive ? "生活模拟中" : "家中正常"}
-            </span>
-          </div>
-          <div className="home-vitals" aria-label="住宅关键状态">
-            <span className="vital-room"><small>我在</small><strong>{sceneCurrentRoomName}</strong></span>
-            <span className="vital-temperature"><small>室内温度</small><strong>{focusedRoom ? `${focusedRoom.indoor_temperature_c.toFixed(1)}°` : "--"}</strong></span>
-            <span className="vital-comfort"><small>舒适度</small><strong>{focusedComfort ? focusedComfort.overall_comfort_score.toFixed(0) : "--"}</strong></span>
-            <span className="vital-power"><small>当前用电</small><strong>{displayedState ? `${displayedState.energy_metrics.current_power_w.toFixed(0)} W` : "--"}</strong></span>
-          </div>
+        <div className="page-intro">
+          <div><p className="page-eyebrow">{activePage === "experiments" ? "建筑物理仿真" : "住宅生活模拟"}</p><h1>{activePage === "overview" ? "我的住宅" : workspacePages[activePage].label}</h1><p>{workspacePages[activePage].description}</p></div>
+          <span className="source-badge">{activePage === "experiments" ? "EnergyPlus · 9 个热区" : "生活模拟 · 简化环境模型"}</span>
         </div>
-      <div className="dashboard">
-        <section className="scene-panel" ref={scenePanelRef}>
+        <div className="overview-metrics" hidden={activePage !== "overview"} aria-label="住宅关键状态">
+          <span><small>当前所在</small><strong>{sceneCurrentRoomName}</strong></span>
+          <span><small>房间温度</small><strong>{focusedRoom ? `${focusedRoom.indoor_temperature_c.toFixed(1)}°C` : "—"}</strong></span>
+          <span><small>房间照度</small><strong>{focusedRoom ? `${focusedRoom.indoor_illuminance_lux.toFixed(0)} lx` : "—"}</strong></span>
+          <span><small>全屋模拟功率</small><strong>{displayedState ? `${displayedState.energy_metrics.current_power_w.toFixed(0)} W` : "—"}</strong></span>
+        </div>
+      <div className="dashboard" hidden={activePage !== "overview"}>
+        <section className="scene-panel" ref={scenePanelRef} data-avatar-x={avatarPosition.x} data-avatar-z={avatarPosition.z}>
           <div className="scene-kicker"><span>全屋空间</span><strong>{sceneCurrentRoomName}</strong></div>
           {sceneView === "2d" ? (
             <HomePlan2D
+              disabled={!presenceHydrated}
               state={displayedState}
               currentRoomId={sceneCurrentRoomId}
               onRoomSelect={(roomId) => {
+                if (!presenceHydrated) return;
                 if (isLifeSimulationActive) {
                   setMessage("生活仿真运行中，人员位置由生活轨迹统一控制。");
                   return;
@@ -579,7 +563,6 @@ export default function App() {
                 avatarPosition={avatarPosition}
                 currentRoomId={sceneCurrentRoomId}
                 avatarVisible={showAvatar}
-                cameraMode="3d"
                 sceneLayer={sceneLayer}
                 resetKey={sceneResetKey}
               />
@@ -620,6 +603,16 @@ export default function App() {
             {isLifeSimulationActive ? `生活仿真：${sceneCurrentRoomName}` : `W/A/S/D 移动“我”：当前在 ${currentRoomName}`}
           </div>
         </section>
+        <aside className="overview-context">
+          <span className="section-kicker">当前房间</span><h2>{sceneCurrentRoomName}</h2><p>在户型中选择房间，切换你的所在位置。</p>
+          <div className="room-status-line"><span>人员状态</span><strong>{focusedRoom?.occupancy ? "有人" : "无人"}</strong></div>
+          <div className="room-status-line"><span>自动运行</span><strong>{isAutonomyActive ? "运行中" : "未开启"}</strong></div>
+          <button type="button" onClick={() => navigate("devices")}>调节房间设备 <span aria-hidden="true">→</span></button>
+          <button type="button" className="secondary-button" onClick={() => navigate("assistant")}>让家庭助手帮忙 <span aria-hidden="true">→</span></button>
+          <div className="overview-experiment"><span>想比较控制策略？</span><p>全屋物理实验有独立的输入、运行记录和结果。</p><button type="button" onClick={() => navigate("experiments")}>前往物理实验 →</button></div>
+        </aside>
+      </div>
+      <div hidden={activePage !== "automation"} className="automation-page">
         <aside className="side-panel" id="autonomy">
           <ResearchControlPanel
             profile={researchProfile}
@@ -645,7 +638,7 @@ export default function App() {
           />
         </aside>
       </div>
-      <div id="home-agent">
+      <div id="home-agent" hidden={activePage !== "assistant"}>
         <AgentOutputPanel
           command={command}
           onCommandChange={setCommand}
@@ -655,8 +648,7 @@ export default function App() {
           isLoading={isLoading || isLifeSimulationActive}
         />
       </div>
-      <div className="operations-grid" id="telemetry">
-        <StatePanel state={displayedState} lastMessage={message} />
+      <div className="devices-page" hidden={activePage !== "devices"}>
         <ControlPanel
           state={displayedState}
           isLoading={isLoading || isLifeSimulationActive}
@@ -665,36 +657,28 @@ export default function App() {
           onEnvironmentChange={handleEnvironmentChange}
           onDeviceAction={handleDeviceAction}
         />
+      </div>
+      <div className="operations-grid" id="telemetry" hidden={activePage !== "data"}>
+        <StatePanel state={displayedState} lastMessage="" />
         <ChartPanel history={history} />
       </div>
+      <div hidden={activePage !== "experiments"}>
+      <details open={activePage === "experiments"} id="energyplus" className="eplus-shell" onToggle={(event) => { if (event.currentTarget.open) setEnergyPlusOpen(true); }}>
+        <summary>EnergyPlus 全屋物理仿真实验 <span>本地 · 可复现</span></summary>
+        {energyPlusOpen && <Suspense fallback={<p>正在加载实验工作台…</p>}><EnergyPlusPanel /></Suspense>}
+      </details>
+      </div>
+      {message && <p className="workspace-message" role="status">{message}</p>}
       </section>
       </div>
     </main>
   );
 }
 
-function getRoomAtPosition(position: { x: number; z: number }): RoomId {
-  const area = ROOM_AREAS.find(
-    (room) =>
-      position.x >= room.x - room.w / 2 &&
-      position.x <= room.x + room.w / 2 &&
-      position.z >= room.z - room.d / 2 &&
-      position.z <= room.z + room.d / 2,
-  );
-  return area?.id ?? "corridor";
-}
-
-function clampToHome(position: { x: number; z: number }) {
-  return {
-    x: Math.max(-7.25, Math.min(5.55, position.x)),
-    z: Math.max(-3.9, Math.min(5.08, position.z)),
-  };
-}
-
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tagName = target.tagName.toLowerCase();
-  return target.isContentEditable || ["input", "textarea", "select", "button"].includes(tagName);
+  return target.isContentEditable || ["input", "textarea", "select"].includes(tagName);
 }
 
 function withCurrentRoomContext(command: string, roomName: string) {

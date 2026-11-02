@@ -1,6 +1,126 @@
 {
   "schema_version": "thesis_claim_matrix_v1",
-  "snapshot_date": "2026-07-16",
+  "local_finetuning_20261026": {
+    "status": "pilot_completed_full_training_resumed_in_standalone_project",
+    "standalone_project": "P:/smart-home-model-training",
+    "migration_checkpoint_step": 60,
+    "model_id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+    "model_revision": "916b56a44061fd5cd7d6a8fb632557ed4f724f60",
+    "dataset": "P:/smart-home-model-training/data/dataset-v5/manifest.json",
+    "dataset_source": "synthetic_rule_v1_not_human_reviewed",
+    "sample_counts": {"train": 2000, "validation": 200, "test": 200},
+    "split_boundary": "kind_by_room_combination_holdout_with_shared_templates",
+    "pilot_training_steps": 2,
+    "pilot_train_runtime_seconds": 7.5469,
+    "pilot_peak_allocated_vram_bytes": 11826972160,
+    "full_training_steps": 250,
+    "full_training_status": "completed",
+    "paired_base_vs_adapter_test_records": 400,
+    "paired_evaluation_status_at_snapshot": "completed",
+    "paired_evaluation_metrics": {
+      "base_schema_valid_rate": 0.0,
+      "adapter_schema_valid_rate": 1.0,
+      "base_exact_ordered_calls_rate": 0.0,
+      "adapter_exact_ordered_calls_rate": 0.91,
+      "adapter_mean_latency_seconds": 4.2709207865,
+      "test_sha256": "2f17ae9231deb8d57c59a778bdf2c87192d64fd60ead7fc4cc56933e1b407f41",
+      "adapter_sha256": "fee3c8db0bc561ff0ec00c6d29e9770ef1c16fa7738d48a993e330efcd9a109e"
+    },
+    "evidence": [
+      "P:/smart-home-model-training/docs/gpu-probe.json",
+      "P:/smart-home-model-training/models/DeepSeek-R1-Distill-Qwen-7B/verified_manifest.json",
+      "P:/smart-home-model-training/docs/dataset-v5-audit.json",
+      "P:/smart-home-model-training/runs/source-run-20261026-v1/pilot/metrics.json",
+      "P:/smart-home-model-training/runs/resumed-20261026-v1/training/metrics.json",
+      "P:/smart-home-model-training/runs/resumed-20261026-v1/evaluation/summary.json"
+    ],
+    "live_job_status": "P:/smart-home-model-training/runs/resumed-20261026-v1/status.json",
+    "model_improvement_claim_supported": false,
+    "production_model_replaced": false,
+    "boundary": "250-step local GPU QLoRA run resumed from checkpoint-60 on synthetic software labels; paired base/adapter evaluation completed on 200 held-out synthetic examples with shared task templates; adapter output was schema-valid and exact ordered-call rate 91%; these results do not establish explanation quality, generalization, safety, independent semantic correctness or physical-device behavior; RQ5 remains unresolved"
+  },
+  "energyplus_single_room_20261026": {
+    "status": "energyplus_26_2_loopback_deployed_uncalibrated_with_real_deepseek_planner_run",
+    "engine": "EnergyPlus 26.2.0",
+    "reference_model": "official 1ZoneUncontrolled IDF adapted to 5x4x3m single zone",
+    "weather": "USA_CO_Golden-NREL.724666_TMY3.epw",
+    "time_grid": "288 five-minute zone timesteps for one simulated day",
+    "controllers": ["rule", "manual", "harness_mock", "harness_real_planner_pending_paired_evaluation"],
+    "paired_rule_vs_harness_mock": {
+      "same_model_weather_and_initial_state_hashes": true,
+      "rule_occupied_target_satisfaction": 0.9,
+      "harness_mock_occupied_target_satisfaction": 0.9583333333,
+      "rule_modeled_electricity_kwh": 2.6993489578,
+      "harness_mock_modeled_electricity_kwh": 5.7271672192,
+      "harness_mock_co2_excess_ppm_minutes": 1031.014944,
+      "harness_mock_rejected_action_count": 28,
+      "comfort_matched_within_one_percentage_point": false,
+      "energy_saving_claim_allowed": false
+    },
+    "paired_rule_vs_deepseek_harness": {
+      "comparison": "summer, one simulated day, same model/weather/initial physical-state fingerprints",
+      "deepseek_model_calls": 48,
+      "mean_model_inference_latency_ms": 2727.326,
+      "mapped_actions": 48,
+      "rejected_actions": 0,
+      "rule_occupied_target_satisfaction": 0.9,
+      "deepseek_harness_occupied_target_satisfaction": 0.0,
+      "rule_co2_excess_ppm_minutes": 0,
+      "deepseek_harness_co2_excess_ppm_minutes": 2941.805,
+      "rule_modeled_electricity_kwh": 2.699349,
+      "deepseek_harness_modeled_electricity_kwh": 4.974,
+      "energy_saving_claim_allowed": false,
+      "interpretation": "lighting-only user request; real model left the neutral HVAC and ventilation controls off, so comfort and CO2 goals configured for scoring were not met"
+    },
+    "evidence": [
+      "P:/llm-smart-home-simulation/data/results/energyplus/comparisons/mock-harness-neutral-summer-20261026/comparison.json",
+      "P:/llm-smart-home-simulation/data/results/energyplus/comparisons/real-deepseek-light-neutral-summer-20261026/comparison.json",
+      "P:/llm-smart-home-simulation/data/results/energyplus/model_diagnostics/20261026.json",
+      "P:/llm-smart-home-simulation/docs/energyplus_local_guide.md"
+    ],
+    "superseded_runs": [
+      "P:/llm-smart-home-simulation/data/results/energyplus/comparisons/72c569904d6147f39aa32cad3f8c8c84",
+      "P:/llm-smart-home-simulation/data/results/energyplus/comparisons/227861ffa744455bad0d17602ef3f806",
+      "P:/llm-smart-home-simulation/data/results/energyplus/comparisons/real-deepseek-light-summer-20261026-v2"
+    ],
+    "superseded_reason": "These early runs retained HVAC-on warmup values as Harness initial controls. The current runner starts Harness devices neutral; old output is preserved as debugging evidence and not used for current claims.",
+    "boundary": "uncalibrated example building and weather software simulation; no field measurements, real-home controls, user study, independent semantic review, or energy-saving claim"
+  },
+  "energyplus_whole_home_20261027": {
+    "status": "nine_designed_spaces_connected_and_engine_verified_uncalibrated",
+    "spatial_scope": "whole_home",
+    "room_count": 9,
+    "floor_area_m2": 97.53,
+    "layout": "data/energyplus/home_layout.json",
+    "rooms": [
+      "living_room",
+      "bedroom",
+      "study_room",
+      "dining_room",
+      "kitchen",
+      "bathroom",
+      "laundry",
+      "balcony",
+      "corridor"
+    ],
+    "checks": {
+      "timepoints_per_run": 288,
+      "room_samples_per_run": 2592,
+      "engine_severe_errors": 0,
+      "room_facility_max_interval_difference_j": 0,
+      "paired_inputs_matched": true,
+      "real_model_calls": 0
+    },
+    "generated_evidence": [
+      "data/results/energyplus/comparisons/whole-home-summer-20261027-v2/comparison.json",
+      "data/results/energyplus/comparisons/whole-home-winter-20261027-v2/comparison.json"
+    ],
+    "browser_evidence": "output/energyplus-whole-home-browser.json",
+    "supported_claim": "All nine designed spaces run in a shared EnergyPlus model with independent observations and inventory-constrained controls; room and facility electricity reconcile against SQLite.",
+    "boundary": "Uncalibrated 3m height, reference constructions, Golden TMY weather, synthetic 2-person occupancy in one selected room 08:00-18:00, fixed 0.05m3/s open-passage mixing. No all-device, real-model whole-home, energy-savings or field-validation claim. Curtains unmapped; dining/corridor windows absent from geometry; fan is mechanical ventilation.",
+    "supersedes_scope_only": "energyplus_single_room_20261026 remains historical one-room evidence; its real-model results do not transfer to whole_home."
+  },
+  "snapshot_date": "2026-10-26",
   "working_title": "基于大语言模型智能体的智能家居系统研究",
   "central_problem": "如何在软件数字孪生中，使基于大语言模型的智能家居自治同时具备异步状态安全、受约束个性化、可复现实验和可审计结论边界。",
   "recommended_thesis_type": "design_science_systems_thesis",
@@ -44,11 +164,13 @@
       "generated_evidence": [
         "data/results/quality/long_soak_30m_20260716T014548Z.json",
         "data/results/snapshot_commit/20260716_025858/summary.json",
-        "data/results/snapshot_commit/20260716_025858/report.md"
+        "data/results/snapshot_commit/20260716_025858/report.md",
+        "data/results/snapshot_commit/20260901_023151/summary.json",
+        "data/results/snapshot_commit/20260901_023151/report.md"
       ],
-      "current_result": "在 100 次确定性快照→状态变化→提交交错中，guarded 的过期动作误提交率为 0，unguarded 为 100%，绝对降低 100 个百分点；无状态变化时两组有效提交率均为 100%，中位门禁判定开销约 +0.15 微秒。构造状态变化到拒绝/执行结果的中位时间分别约 0.291/0.298 毫秒；该指标不是 presence 或真实高优先级事件响应时延。30 分钟本地软件仿真运行窗口另观察到 16 个过期计划均被拒绝。",
-      "evidence_status": "isolated_guarded_comparison_supported",
-      "supported_claim": "在冻结动作、初始状态、扰动和执行路径的隔离软件仿真中，快照新鲜度门禁阻止了全部构造的过期动作提交，且未降低有效快照提交率。",
+      "current_result": "在 100 次确定性快照→状态变化→提交交错中，guarded 的过期动作误提交率为 0，unguarded 为 100%，绝对降低 100 个百分点；无状态变化时两组有效提交率均为 100%，中位门禁判定开销约 +0.15 微秒。新增 4800 trace 压力矩阵覆盖 unguarded、global_lock、optimistic、optimistic_replan，5 个虚拟 planner delay、4 个 event rate 和 3 个 fault rate；在 event_rate=1.0、fault_rate=0、delay=0 的代表单元中，unguarded 过期提交率 1.0，optimistic 为 0，optimistic_replan 为 0 且重规划成功率 1.0。构造状态变化到拒绝/执行结果的时延不是 presence 或真实高优先级事件响应时延。30 分钟本地软件仿真运行窗口另观察到 16 个过期计划均被拒绝。",
+      "evidence_status": "pressure_matrix_software_evidence_supported",
+      "supported_claim": "在冻结动作、初始状态、扰动和执行路径的隔离软件仿真及压力矩阵中，快照新鲜度门禁阻止了构造的过期动作提交；重规划策略能在拒绝过期计划后基于新快照恢复提交。",
       "prohibited_claim": "该隔离实验已证明真实住宅中的故障发生率、硬实时保证、真实设备安全或相对所有并发控制方法的全面优越性。",
       "next_required_evidence": [
         "若论文扩展到生产部署主张，再增加多会话、多进程和设备确认故障模型",
@@ -86,21 +208,37 @@
       ],
       "repository_evidence": [
         "scripts/run_personalization_experiments.py",
+        "scripts/run_personalization_longitudinal_experiment.py",
+        "scripts/run_external_validity_slice_experiment.py",
+        "data/research/external_validity_slices.json",
         "backend/tests/test_personalization_experiment_protocol.py",
-        "backend/app/research/personalization.py"
+        "backend/tests/test_personalization_longitudinal_experiment.py",
+        "backend/tests/test_external_validity_slice_experiment.py",
+        "backend/app/research/personalization.py",
+        "backend/app/experiments/episode_benchmark.py"
       ],
       "generated_evidence": [
         "data/results/personalization/ablation_protocol.json",
         "data/results/personalization/ablation_summary.json",
-        "data/results/personalization/ablation_summary.md"
+        "data/results/personalization/ablation_summary.md",
+        "data/results/personalization_longitudinal/20260901_041732/summary.json",
+        "data/results/personalization_longitudinal/20260901_041732/report.md",
+        "data/results/personalization_longitudinal/20260903_074306/summary.json",
+        "data/results/personalization_longitudinal/20260903_074306/report.md",
+        "data/results/external_validity/20260901_055641/summary.json",
+        "data/results/external_validity/20260901_055641/report.md",
+        "data/results/e1_task_benchmark/20260908_033452_721117/summary.json",
+        "docs/four_stage_completion_20260909.md"
       ],
-      "current_result": "在 4 个普通控制任务簇、3 个配对 seed 的 mock 语义实验中，预构造固定画像只提供给 personalized 方法的规划阶段；其相对 single_agent 的模拟加权效用为 nominal +2.80、disturbed +0.253，同时舒适度分别为 -5.785 和 -1.363。该实验没有运行反思、重复显式反馈、确认升格和 confirmed_experience 形成链。",
-      "evidence_status": "fixed_simulation_descriptive_mock",
-      "supported_claim": "固定画像条件化规划在当前模拟任务中改变了目标权衡，并非所有指标同时改善。",
+      "current_result": "在 4 个普通控制任务簇、3 个配对 seed 的 mock 语义实验中，预构造固定画像只提供给 personalized 方法的规划阶段；其相对 single_agent 的模拟加权效用为 nominal +2.80、disturbed +0.253，同时舒适度分别为 -5.785 和 -1.363。纵向个性化已扩展为 full matrix：30 profiles x 30 turns x 4 methods x 3 seeds = 10800 records；gated_confirmed_memory post-confirmation visibility=1.0、utility_gain_post_minus_pre=+8.616、unauthorized prior exposure=0；ungated_memory 的 utility gain=+5.664，但记录 2610 次未经确认 prior exposure；static_profile 效用较高但 post-pre gain=0；所有方法 safety_override_count=0。建筑能耗外部有效性 slice smoke：2 buildings x 2 climates x 2 seasons x 4 policies x 2 days = 64 records；energy_saving 平均日能耗 16.21205 kWh，低于 rule_baseline 20.17500 kWh，但平均舒适违约 140 分钟；safety_aware 平均日能耗 17.65312 kWh 且本合成 slice 舒适违约为 0。 2026-09-09 补充 E1：实际 TaskRunner 的 24 基础场景、600 配置、4 方法、3 seeds 共7200 mock记录，开发者状态契约通过率 single/static/personalized/full=77.5%/90%/100%/100%；场景谓词仅覆盖温度等声明内容，100%不代表完整意图达成。personalized与full在本矩阵的这些结果相同，不能归因于确认经验带来控制收益。后置30分钟能耗是单步终点功率估计；批次动作另有未计时温湿度更新，不是等总物理时间或全控制成本。",
+      "evidence_status": "longitudinal_personalization_full_matrix_supported",
+      "supported_claim": "固定画像、纵向 feedback-gated full matrix 和建筑/气候/季节 slice smoke 显示软件仿真中的控制策略存在可追踪的效用、能耗与舒适度权衡；gated confirmed memory 能在确认后暴露经验且避免未确认 prior exposure；energy_saving 降低合成 slice 能耗但引入舒适违约。",
       "prohibited_claim": "个性化已显著提升真实住户满意度、总体舒适度或真实家庭节能。",
       "next_required_evidence": [
         "冻结主要效用和舒适度非劣界值",
         "扩展独立任务簇和住户画像，不把 seed 重复当独立样本",
+        "若主张端到端控制效用，将 longitudinal component matrix 接入 TaskRunner episode benchmark",
+        "将 external-validity slice 替换或桥接到真实 BOPTEST/CASAS 数据后再主张外部有效性",
         "使用版本固定真实模型复现实验",
         "若主张住户效果则开展真实用户研究"
       ],
@@ -138,18 +276,27 @@
       "repository_evidence": [
         "backend/app/research/personalization.py",
         "backend/tests/test_personalization.py",
+        "scripts/run_personalization_longitudinal_experiment.py",
+        "backend/tests/test_personalization_longitudinal_experiment.py",
         "backend/tests/test_autonomous_runtime.py",
-        "docs/autonomous_personalization.md"
+        "docs/autonomous_personalization.md",
+        "backend/app/experiments/episode_benchmark.py"
       ],
       "generated_evidence": [
-        "data/results/quality/latest.json"
+        "data/results/quality/latest.json",
+        "data/results/personalization_longitudinal/20260901_041732/summary.json",
+        "data/results/personalization_longitudinal/20260901_041732/report.md",
+        "data/results/personalization_longitudinal/20260903_074306/summary.json",
+        "data/results/personalization_longitudinal/20260903_074306/report.md",
+        "data/results/e1_task_benchmark/20260908_033452_721117/summary.json",
+        "docs/four_stage_completion_20260909.md"
       ],
-      "current_result": "回归测试覆盖确认前不暴露、至少 3 次显式反馈且正向率达到阈值后暴露、用途仅为 planning_context_only_no_target_or_safety_override，以及写盘失败时的原子恢复。尚未评估该门禁对后续控制效用的因果效果。",
-      "evidence_status": "software_evidence_supported",
-      "supported_claim": "反馈门禁、上下文用途和不越权约束在当前软件实现中具有确定性回归证据。",
+      "current_result": "回归测试覆盖确认前不暴露、至少 3 次显式反馈且正向率达到阈值后暴露、用途仅为 planning_context_only_no_target_or_safety_override，以及写盘失败时的原子恢复。纵向 full matrix 生成 10800 条组件级软件记录：gated_confirmed_memory 在 turn 1-2 不暴露 confirmed_experience，post-confirmation visibility=1.0，utility_gain_post_minus_pre=+8.616，unauthorized_prior_exposure=0；ungated_memory 不通过确认门禁且记录 2610 次 unauthorized_prior_exposure；所有方法 safety_override_count=0。 E1 full组新增三次脚本化显式反馈后再运行TaskRunner的链路，保存演示确认可见性为false/false/true；该链路证明门禁与上下文接通，不证明确认经验单独改善控制或真实用户长期偏好。",
+      "evidence_status": "longitudinal_personalization_full_matrix_supported",
+      "supported_claim": "反馈门禁、上下文用途、不越权约束，以及显式反馈达到阈值后才暴露 confirmed_experience 的纵向机制在当前软件实现中具有回归和 full matrix 产物证据。",
       "prohibited_claim": "反馈确认机制已经提高控制质量、实现模型自我进化或代表真实住户长期偏好。",
       "next_required_evidence": [
-        "若主张效用提升，单独设计端到端反馈升格与无升格对照",
+        "若主张端到端效用提升，扩展为真实 TaskRunner episode 级反馈升格与无升格对照",
         "预注册经验形成窗口、用户反馈来源和后续任务单位",
         "真实用户研究前不得把模拟反馈称为住户确认"
       ],
@@ -184,19 +331,44 @@
       ],
       "repository_evidence": [
         "backend/app/experiments/task_runner.py",
+        "data/research/safety_fault_taxonomy.json",
+        "scripts/run_safety_fault_taxonomy_experiment.py",
+        "scripts/run_role_ablation_experiment.py",
+        "scripts/run_rag_knowledge_robustness_experiment.py",
         "backend/tests/test_personalization_experiment_protocol.py",
-        "docs/multi_agent_collaboration.md"
+        "backend/tests/test_safety_fault_taxonomy_experiment.py",
+        "backend/tests/test_role_ablation_experiment.py",
+        "backend/tests/test_rag_knowledge_robustness_experiment.py",
+        "docs/multi_agent_collaboration.md",
+        "backend/app/experiments/episode_benchmark.py"
       ],
       "generated_evidence": [
         "data/results/personalization/ablation_summary.json",
-        "data/results/personalization/ablation_summary.md"
+        "data/results/personalization/ablation_summary.md",
+        "data/results/safety_faults/20260901_023745/summary.json",
+        "data/results/safety_faults/20260901_023745/report.md",
+        "data/results/safety_faults/20260901_120915/summary.json",
+        "data/results/safety_faults/20260901_120915/report.md",
+        "data/results/role_ablation/20260901_024409/summary.json",
+        "data/results/role_ablation/20260901_024409/report.md",
+        "data/results/role_ablation/20260901_131011/summary.json",
+        "data/results/role_ablation/20260901_131011/report.md",
+        "data/results/rag_knowledge_robustness/20260901_045642/summary.json",
+        "data/results/rag_knowledge_robustness/20260901_045642/report.md",
+        "data/results/rag_knowledge_robustness/20260903_064416/summary.json",
+        "data/results/rag_knowledge_robustness/20260903_064416/report.md",
+        "data/results/e1_task_benchmark/20260908_033452_721117/summary.json",
+        "docs/four_stage_completion_20260909.md",
+        "data/results/e1_role_contribution/20260908_033452_713304/summary.json"
       ],
-      "current_result": "普通任务中 multi_agent_static 与 single_agent 仍无差异；安全实验已扩展为开窗、强风和过度制冷 3 个不同机制任务簇。126 条新鲜记录中，单智能体检测但未阻断 18/18 注入故障，两个带审查方法均阻断 18/18；安全分数差为 +80.00，任务簇 bootstrap 95% 区间为 [+80.00,+80.00]。",
-      "evidence_status": "three_named_fixture_clusters_descriptive",
-      "supported_claim": "在三个预定义软件故障机制和共享任务/扰动条件下，多智能体安全分支产生了可追踪动作干预并阻断全部注入故障；普通任务未显示审查分支优势。",
-      "prohibited_claim": "三个构造故障代表真实故障分布、多智能体总体优于单智能体，或该结果证明真实家庭安全。",
+      "current_result": "普通任务中 multi_agent_static 与 single_agent 仍无差异；安全实验已扩展为开窗、强风和过度制冷 3 个不同机制任务簇。126 条新鲜记录中，单智能体检测但未阻断 18/18 注入故障，两个带审查方法均阻断 18/18；安全分数差为 +80.00，任务簇 bootstrap 95% 区间为 [+80.00,+80.00]。15 类 taxonomy 已从 smoke 扩展为 full matrix：15 categories x 20 variants x 4 methods x 3 repeat seeds = 3600 records；full 方法 detection_rate=1.0、block_rate=0.8、false_block_rate=0、recovery_success_rate=1.0、mean_safety_score=100.0；safety_review 对 high airflow/thermal fault 的 family-level block_rate=1.0，对 medium energy conflict 保留 warning；critic_review/full 对 energy_conflict 的 critic_action_change_rate=1.0。角色消融也已扩展为 full matrix：6 groups x 200 deterministic task variants x 3 repeat seeds = 3600 records；full group action_change_rate=0.665、safety_action_change_rate=0.335、critic_action_change_rate=0.330、recovery_success_rate=1.0、final_state_success_rate=1.0、ordinary_task_side_effect_rate=0、mean_safety_score=100.0；+safety 恢复 high_safety_fault，+critic 恢复 medium_energy_conflict，+feedback 在该构造 matrix 中 feedback_correction_rate=0。RAG 知识条件安全已从 smoke 扩展为 full matrix：100 base task variants x 5 knowledge conditions x 3 repeat seeds = 1500 knowledge trials，并展开为 3000 review records；no_rag/correct_rag 的 unsafe_action_rate_after_review=0，correct_rag source_provenance_coverage=1.0 且 false-positive proxy=0；stale/conflicting/malicious 的 planner_only unsafe_action_rate_after_review=1.0、attack_recall_proxy=1.0；safety_review 将三类错误知识条件的 unsafe_action_rate_after_review 降到 0.33、review_action_change_rate=0.67；malicious_rag instruction_hierarchy_violation_rate=1.0。 新增300条实际TaskRunner角色移除记录（24基础场景+1单列命名Critic探针、4 variants、3 seeds）。基础场景 full-minus-without_safety 状态契约通过率+8.33个百分点；Critic与Feedback移除差均为0。Critic仅在命名开窗制冷冲突探针中产生+100个百分点，不能外推自然故障频率。",
+      "evidence_status": "rag_knowledge_robustness_full_matrix_supported",
+      "supported_claim": "在三个端到端命名故障机制、15 类 direct safety taxonomy full matrix、组件级 frozen-plan 角色消融和合成 RAG 知识条件 smoke 中，软件安全审查能够对 high airflow/thermal health fault 产生可追踪阻断；critic 分支可修订 medium energy conflict；RAG stale/conflicting/malicious 条件能被记录为独立知识风险来源。",
+      "prohibited_claim": "15 类构造 taxonomy 或合成 RAG 条件代表真实故障/攻击分布、组件级 smoke 证明完整多智能体端到端总体优越，或该结果证明真实家庭安全。",
       "next_required_evidence": [
         "投稿时将普通任务副作用和构造故障拦截效果分表报告",
+        "将角色消融从 3 个 frozen candidate plans 扩展为多任务 episode benchmark，并加入时延、副作用和 recovery success",
+        "将 RAG smoke 扩展为真实检索污染、召回 under attack、prompt-injection 和 provenance fail-closed benchmark",
         "若主张总体安全或真实设备安全，必须增加外部故障 taxonomy 与现场实验"
       ],
       "submission_blocker": false
@@ -232,14 +404,18 @@
         "scripts/validate_field_validation_evidence.py",
         "backend/tests/test_reproduction_provenance.py",
         "backend/tests/test_artifact_integrity.py",
-        "docs/improvement_backlog.md"
+        "docs/improvement_backlog.md",
+        "backend/app/experiments/episode_benchmark.py"
       ],
       "generated_evidence": [
         "output/qa-complete-upgrade-reproduction/20260716_092731/summary.json",
         "data/results/quality/latest.json",
-        "data/results/quality/live_api_matrix.json"
+        "data/results/quality/live_api_matrix.json",
+        "data/results/e1_task_benchmark/20260908_033452_721117/summary.json",
+        "docs/four_stage_completion_20260909.md",
+        "frontend/public/decision-demos/evidence.json"
       ],
-      "current_result": "当前 mock 复现实验覆盖 36 个任务、3 次隔离重复和 648 条稳定性记录；指标适用性、模型来源与标签来源显式记录。签名清单和不完整外部证据的 fail-closed 行为有回归测试，但当前引用的生成产物尚未绑定经复验的签名 manifest。",
+      "current_result": "当前 mock 复现实验覆盖 36 个任务、3 次隔离重复和 648 条稳定性记录；指标适用性、模型来源与标签来源显式记录。签名清单和不完整外部证据的 fail-closed 行为有回归测试，但当前引用的生成产物尚未绑定经复验的签名 manifest。 新增decision_trace_v1前后动作/状态与实测阶段耗时；三份隔离软件演示支持JSON导入导出、摘要与必要事件完整性检查及执行/反馈/提交门禁重算。摘要自洽不是来源认证，导入文件仅作结构检查，不执行设备动作。",
       "evidence_status": "software_evidence_supported",
       "supported_claim": "仓库内软件仿真与实验报告能够记录来源、适用性和失败边界；签名完整性目前是已实现并测试的能力，不是当前引用产物已签名的证明。",
       "prohibited_claim": "可追溯性本身证明模型准确、真实设备安全、隐私合规或研究结论正确。",
@@ -279,16 +455,18 @@
       "repository_evidence": [
         "data/tasks/reproduction_tasks.json",
         "scripts/run_reproduction_experiments.py",
-        "scripts/validate_semantic_annotation_review.py"
+        "scripts/validate_semantic_annotation_review.py",
+        "backend/app/experiments/semantic_targets.py"
       ],
       "generated_evidence": [
         "output/rq5-real-model-fixed/20260716_111455/summary.json",
         "output/rq5-real-model-fixed/20260716_111455/reproduction_report.md",
-        "output/rq5-real-model-fixed/20260716_111455/task_records.csv"
+        "output/rq5-real-model-fixed/20260716_111455/task_records.csv",
+        "output/semantic-target-audit/20260907_093852_952423/summary.json"
       ],
-      "current_result": "固定 qwen3:8b digest 的完整 36 任务×3 重复实验已产生 216 条运行成功记录，真实组 108 条均为 effective real 且无缓存命中。覆盖率/准确率指标只使用预注册的主重复（每组 n=36）：真实组意图准确率 77.78% vs 规则组 66.67%、控制方向 77.78% vs 27.78%、设备 F1 56.59% vs 47.13%、完成率 100% vs 97.22%；但目标精确匹配 25.00% vs 61.11%、目标 IoU 70.47% vs 83.13%、响应 3693.22 ms vs 433.37 ms，能耗与舒适指标也更差。全部三次重复用于稳定性，真实组语义/计划精确重复稳定性为 91.67%/97.22%。运行成功不等于语义正确或任务完成；标签独立复核仍为 not_recorded。",
+      "current_result": "固定 qwen3:8b digest 的完整 36 任务×3 重复实验已产生 216 条运行成功记录，真实组 108 条均为 effective real 且无缓存命中。覆盖率/准确率指标只使用预注册的主重复（每组 n=36）：真实组意图准确率 77.78% vs 规则组 66.67%、控制方向 77.78% vs 27.78%、设备 F1 56.59% vs 47.13%、完成率 100% vs 97.22%；但目标精确匹配 25.00% vs 61.11%、目标 IoU 70.47% vs 83.13%、响应 3693.22 ms vs 433.37 ms，能耗与舒适指标也更差。全部三次重复用于稳定性，真实组语义/计划精确重复稳定性为 91.67%/97.22%。运行成功不等于语义正确或任务完成；标签独立复核仍为 not_recorded。 2026-09-09新增适用性审计：216条历史预测原样保留，主重复72条（两组各36）；显式数字目标适用分母两组均为0，准确率为N/A，不能写为0%或100%。旧25.00%/61.11%是包含未请求默认目标的legacy口径，两组各17条定性请求需要人工裁决。",
       "evidence_status": "versioned_real_full_suite_descriptive",
-      "supported_claim": "在固定任务集、模型 digest、解码配置和软件模拟器中，qwen3:8b 相对规则基线改善了意图、控制方向和设备选择，但在参数目标、延迟、能耗和舒适度上存在明确代价。",
+      "supported_claim": "在固定任务集、模型 digest、解码配置和软件模拟器中，qwen3:8b 相对规则基线改善了意图、控制方向和设备选择，但延迟、能耗和舒适度存在代价。旧参数目标精确率仅是legacy默认范围一致性；本批无显式数字目标，新增适用性口径为N/A，不能据此判断显式参数理解优劣。",
       "prohibited_claim": "qwen3:8b 全面优于规则基线、这些固定任务百分比可外推到总体模型能力，或结果已经通过独立人工标签有效性审查。",
       "next_required_evidence": [
         "完成两名独立标注审查与歧义裁决",
@@ -392,6 +570,75 @@
       "title": "AgentSense: Virtual Sensor Data Generation Using LLM Agents in Simulated Home Environments",
       "url": "https://doi.org/10.1609/aaai.v40i3.37169",
       "overlap": "LLM Agent、模拟住宅与虚拟传感器。"
+    }
+  ],
+  "bounded_verification_updates": [
+    {
+      "date": "2026-10-17",
+      "scope": "explicit_device_control_v2 targeted regression and E1 mock smoke",
+      "tests_passed": 57,
+      "generated_evidence": [
+        "data/results/e1_task_benchmark/20261017_153220_182395/summary.json",
+        "data/results/e1_task_benchmark/20261017_153220_182395/records.jsonl"
+      ],
+      "runtime_success_all_methods": 1.0,
+      "state_contract_pass_rates": {
+        "single_agent": 0.7916666666666666,
+        "multi_agent_static": 0.875,
+        "personalized": 1.0,
+        "full": 1.0
+      },
+      "live_localhost_port80": "both health probes connection_refused",
+      "boundary": "targeted software verification only; historical full matrix unchanged; no real model, full-intent, physical safety or energy benefit claim",
+      "external_review_gate": "RQ5 remains unresolved"
+    },
+    {
+      "date": "2026-10-17",
+      "scope": "unpunctuated explicit control and opt-in minute accounting",
+      "backend_suite_passed": 251,
+      "e1_full_artifact": "data/results/e1_task_benchmark/20261017_153640_135596",
+      "e1_full_records": 7200,
+      "e1_accounting_mode": "legacy",
+      "accounting_diagnostic_artifact": "data/results/integrated_accounting/20261017_154016_540080",
+      "accounting_diagnostic_records": 6,
+      "accounting_diagnostic_checks_passed": true,
+      "boundary": "opt-in device action/step accounting only; not yet integrated into E1; no real-model or field claim",
+      "external_review_gate": "RQ5 unresolved"
+    },
+    {
+      "date": "2026-10-18",
+      "scope": "integrated_total_30m_v1 end-to-end full matrix",
+      "backend_suite_passed": 257,
+      "generated_evidence": [
+        "data/results/integrated_e1/20261017_154901_058487/summary.json",
+        "data/results/integrated_e1/20261017_154901_058487/protocol.json"
+      ],
+      "records": 7200,
+      "paired_units": 1800,
+      "frozen_source_files": 80,
+      "trace_energy_delta_max_error": 0,
+      "boundary": "fixed developer scenarios, mock, integrated simulation; preparation and isolated training excluded; no field savings/generalization claim",
+      "external_review_gate": "RQ5 unresolved"
+    },
+    {
+      "date": "2026-10-18",
+      "scope": "time_discretization numerical sensitivity",
+      "generated_evidence": [
+        "data/results/time_discretization/20261017_160838_122257/summary.json",
+        "data/results/time_discretization/20261017_160838_122257/protocol.json"
+      ],
+      "records": 36,
+      "scenarios": 9,
+      "time_steps_minutes": [
+        1,
+        2,
+        5,
+        30
+      ],
+      "total_horizon_minutes": 30,
+      "total_horizon_check": true,
+      "boundary": "fixed synthetic numerical diagnostic, no LLM calls; one-minute reference is not physical truth; no control superiority or field savings claim",
+      "external_review_gate": "RQ5 unresolved"
     }
   ]
 }

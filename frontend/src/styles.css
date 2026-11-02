@@ -1282,6 +1282,91 @@ input[type="range"] {
   font-size: 11px;
 }
 
+.graph-harness {
+  display: grid;
+  gap: 12px;
+  min-height: 252px;
+}
+
+.graph-harness-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border: 1px solid #ccefe8;
+  border-radius: 9px;
+  background: linear-gradient(115deg, #f1fffb, #f8fcfb);
+}
+
+.graph-harness-summary > div {
+  display: grid;
+  gap: 3px;
+}
+
+.graph-harness-summary strong {
+  color: #173d47;
+  font-size: 13px;
+}
+
+.graph-status {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.graph-status.valid { background: #dff8ef; color: #08745e; }
+.graph-status.invalid { background: #fff0ed; color: #b04536; }
+.graph-status.pending { background: #f0f4f6; color: #5a6e79; }
+
+.graph-node-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.graph-node-track li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #697e89;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.graph-node-track li:not(:last-child)::after {
+  content: "→";
+  margin: 0 7px;
+  color: #a8b9c1;
+}
+
+.graph-node-track i {
+  width: 8px;
+  height: 8px;
+  border: 2px solid #b8c8cf;
+  border-radius: 50%;
+}
+
+.graph-node-track .observed { color: #117c68; }
+.graph-node-track .observed i { border-color: #0ea692; background: #0ea692; box-shadow: 0 0 0 3px #def7f1; }
+
+.graph-boundary,
+.graph-empty {
+  margin: 0;
+  padding: 9px 10px;
+  border-left: 3px solid #6a8fa1;
+  border-radius: 5px;
+  background: #f5f9fb;
+  color: #526a7b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .json-block {
   padding: 10px;
 }

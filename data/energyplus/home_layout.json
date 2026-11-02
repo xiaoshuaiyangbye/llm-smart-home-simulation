@@ -1,0 +1,194 @@
+{
+  "schema": "designed_home_thermal_layout_v1",
+  "height_m": 3,
+  "source": "frontend/src/data/floorPlan.ts wallRuns and openings",
+  "coordinate_transform": "EnergyPlus x=plan x, y=-plan z; plan north is -z",
+  "assumptions": [
+    "3 m height is assumed, not measured",
+    "Wall centerlines define thermal boundaries; display rectangles are not physical polygons",
+    "Dining/corridor interface z=2.35 is an open thermal partition, not a solid wall",
+    "Missing bottom outline between balcony and entry follows corridor polygon; unmeasured",
+    "Balcony modeled enclosed by existing glass; not a measured outdoor balcony",
+    "Door leaves treated closed; fixed cross-mixing only on open passages; no calibrated airflow network"
+  ],
+  "polygons": {
+    "bedroom": [
+      [
+        -6.45,
+        -4.2
+      ],
+      [
+        -2.4,
+        -4.2
+      ],
+      [
+        -2.4,
+        -1.3
+      ],
+      [
+        -6.45,
+        -1.3
+      ]
+    ],
+    "study_room": [
+      [
+        -2.4,
+        -4.2
+      ],
+      [
+        1.4,
+        -4.2
+      ],
+      [
+        1.4,
+        -1.3
+      ],
+      [
+        -2.4,
+        -1.3
+      ]
+    ],
+    "bathroom": [
+      [
+        1.4,
+        -4.2
+      ],
+      [
+        4.55,
+        -4.2
+      ],
+      [
+        4.55,
+        -1.3
+      ],
+      [
+        1.4,
+        -1.3
+      ]
+    ],
+    "living_room": [
+      [
+        -6.45,
+        -1.3
+      ],
+      [
+        -2.45,
+        -1.3
+      ],
+      [
+        -2.45,
+        2.35
+      ],
+      [
+        -6.45,
+        2.35
+      ]
+    ],
+    "dining_room": [
+      [
+        -2.45,
+        -1.3
+      ],
+      [
+        1.55,
+        -1.3
+      ],
+      [
+        1.55,
+        2.35
+      ],
+      [
+        -2.45,
+        2.35
+      ]
+    ],
+    "kitchen": [
+      [
+        1.55,
+        -1.3
+      ],
+      [
+        4.55,
+        -1.3
+      ],
+      [
+        4.55,
+        2.55
+      ],
+      [
+        1.55,
+        2.55
+      ]
+    ],
+    "laundry": [
+      [
+        1.45,
+        2.55
+      ],
+      [
+        4.55,
+        2.55
+      ],
+      [
+        4.55,
+        4.8
+      ],
+      [
+        1.45,
+        4.8
+      ]
+    ],
+    "balcony": [
+      [
+        -6.45,
+        2.35
+      ],
+      [
+        -4.05,
+        2.35
+      ],
+      [
+        -4.05,
+        4.5
+      ],
+      [
+        -6.45,
+        4.5
+      ]
+    ],
+    "corridor": [
+      [
+        -4.05,
+        2.35
+      ],
+      [
+        1.55,
+        2.35
+      ],
+      [
+        1.55,
+        2.55
+      ],
+      [
+        1.45,
+        2.55
+      ],
+      [
+        1.45,
+        4.8
+      ],
+      [
+        -1.55,
+        4.8
+      ],
+      [
+        -1.55,
+        4.5
+      ],
+      [
+        -4.05,
+        4.5
+      ]
+    ]
+  }
+}

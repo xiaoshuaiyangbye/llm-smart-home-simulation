@@ -1,6 +1,8 @@
 from datetime import datetime
 from typing import Any
 
+from app.agents.explicit_control import explicit_actions
+
 from app.schemas.action_schema import PlannedDeviceAction
 from app.schemas.state_schema import SmartHomeState
 
@@ -10,6 +12,12 @@ class PlanningAgent:
         room_id = semantic_result.get("room", "living_room")
         intent = semantic_result.get("intent", "basic_light_control")
         control_goal = semantic_result.get("control_goal")
+        if semantic_result.get("explicit_control"):
+            actions = [PlannedDeviceAction.model_validate(action) for action in explicit_actions(semantic_result, current_state)]
+            actions = self._apply_contextual_safety_constraints(actions, semantic_result, current_state, room_id)
+            return {"plan_id": f"plan-{datetime.now().strftime('%Y%m%d%H%M%S')}", "agent": "planning_agent",
+                    "intent": intent, "room": room_id, "scope": semantic_result.get("scope", "single_room"),
+                    "control_goal": control_goal, "actions": [action.model_dump() for action in actions]}
         if intent in {"context_update", "occupancy_update"}:
             return {
                 "plan_id": f"plan-{datetime.now().strftime('%Y%m%d%H%M%S')}",

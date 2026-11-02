@@ -1,12 +1,14 @@
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Callable
+from time import perf_counter
 
 from app.agents.blackboard import MultiAgentBlackboard
 from app.agents.collaboration_agent import CollaborationAgent
 from app.agents.comfort_agent import ComfortAgent
 from app.agents.context_memory import UserContextMemory
 from app.agents.critic_agent import CriticAgent
+from app.agents.decision_trace import DecisionTrace
 from app.agents.energy_agent import EnergyAgent
 from app.agents.execution_agent import ExecutionAgent
 from app.agents.feedback_agent import FeedbackAgent
@@ -15,6 +17,7 @@ from app.agents.llm_client import LLMClient, is_location_update_command
 from app.agents.planning_agent import PlanningAgent
 from app.agents.safety_agent import SafetyAgent
 from app.agents.semantic_agent import SemanticAgent
+from app.agents.workflow_graph import DEFAULT_MULTI_AGENT_WORKFLOW_GRAPH
 from app.experiments.logger import ExperimentLogger
 from app.rag import RagDocumentStore
 from app.research import RobustnessConfig, UserPreferenceService
@@ -57,6 +60,8 @@ class TaskRunner:
         log_task_results: bool = True,
         rag_store: RagDocumentStore | None = None,
         experiment_safety_fault: dict[str, Any] | None = None,
+        enable_safety_review: bool | None = None,
+        enable_critic_review: bool | None = None,
     ) -> None:
         llm_client = LLMClient()
         self.environment = environment
@@ -77,6 +82,8 @@ class TaskRunner:
         self.enable_feedback_correction = enable_feedback_correction
         self.enable_context_memory = enable_context_memory
         self.enable_multi_agent_review = enable_multi_agent_review
+        self.enable_safety_review = enable_multi_agent_review if enable_safety_review is None else enable_safety_review
+        self.enable_critic_review = enable_multi_agent_review if enable_critic_review is None else enable_critic_review
         self.execute_actions = execute_actions
         self.log_task_results = log_task_results
         # This hook is intentionally constructor-only: it is a deterministic
@@ -92,8 +99,10 @@ class TaskRunner:
         robustness_config: RobustnessConfig | None = None,
         event_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> AgentCommandResponse:
+        decision_trace = DecisionTrace()
         try:
             blackboard = MultiAgentBlackboard(request.user_command, on_stage=event_callback)
+            blackboard.set_workflow_graph(DEFAULT_MULTI_AGENT_WORKFLOW_GRAPH.describe())
             current_state = self.environment.get_state(refresh_realtime=self.refresh_realtime)
             blackboard.add_stage(
                 "orchestrator",
@@ -155,6 +164,7 @@ class TaskRunner:
                 )
             if semantic_result.get("error"):
                 raise RuntimeError(str(semantic_result["error"]))
+            decision_trace.semantic_mode = str(semantic_result.get("llm_mode", "unknown"))
             semantic_result["rag_context"] = knowledge_result.get("rag_context", {})
             semantic_result["rag_guidance"] = knowledge_result.get("guidance", [])
             if preference_service:
@@ -186,13 +196,21 @@ class TaskRunner:
             )
             blackboard.add_stage("comfort_agent", comfort_result)
             blackboard.add_stage("energy_agent", energy_result)
+            stage_started = perf_counter()
             plan_result = self.planning_agent.plan(
                 semantic_result,
                 decision_state,
             )
             if self.experiment_safety_fault:
                 plan_result = self._inject_experiment_safety_fault(plan_result)
+            decision_trace.record("planning_agent", after_actions=plan_result.get("actions", []),
+                                  duration_ms=(perf_counter() - stage_started) * 1000,
+                                  details={"experiment_fault": plan_result.get("experiment_safety_fault"),
+                                           "targets": semantic_result.get("targets"),
+                                           "confirmed_experience": semantic_result.get("user_preference_context", {}).get("confirmed_experience")})
             blackboard.add_stage("planning_agent", plan_result)
+            before_collaboration = deepcopy(plan_result.get("actions", []))
+            stage_started = perf_counter()
             collaboration_result = (
                 self.collaboration_agent.coordinate(plan_result, comfort_result, energy_result)
                 if self.enable_multi_agent_review
@@ -204,17 +222,24 @@ class TaskRunner:
                 }
             )
             plan_result = collaboration_result["plan_result"]
+            decision_trace.record("collaboration_agent", before_actions=before_collaboration,
+                                  after_actions=plan_result.get("actions", []), duration_ms=(perf_counter() - stage_started) * 1000)
             blackboard.add_stage(
                 "collaboration_agent",
                 {key: value for key, value in collaboration_result.items() if key != "plan_result"},
             )
+            before_safety = deepcopy(plan_result.get("actions", []))
+            stage_started = perf_counter()
             safety_result = (
                 self.safety_agent.review(semantic_result, plan_result, knowledge_result)
-                if self.enable_multi_agent_review
+                if self.enable_safety_review
                 else self._assess_without_safety_intervention(semantic_result, plan_result)
             )
-            if self.enable_multi_agent_review:
+            if self.enable_safety_review:
                 plan_result["actions"] = safety_result.get("actions", plan_result.get("actions", []))
+            decision_trace.record("safety_agent", before_actions=before_safety, after_actions=plan_result.get("actions", []),
+                                  duration_ms=(perf_counter() - stage_started) * 1000,
+                                  details={"enabled": self.enable_safety_review, "issues": safety_result.get("issues", []), "review_round": 1})
             retained_actions, simulated_failures = UserPreferenceService.filter_failed_actions(
                 plan_result.get("actions", []),
                 robustness_config or RobustnessConfig(),
@@ -225,6 +250,8 @@ class TaskRunner:
                 "observation": robustness_observation,
                 "simulated_actuator_failures": simulated_failures,
             }
+            before_critic = deepcopy(plan_result.get("actions", []))
+            stage_started = perf_counter()
             critic_result = (
                 self.critic_agent.review(
                     semantic_result,
@@ -234,13 +261,14 @@ class TaskRunner:
                     energy_result,
                     knowledge_result,
                 )
-                if self.enable_multi_agent_review
+                if self.enable_critic_review
                 else {"agent": "critic_agent", "approved": True, "enabled": False}
             )
             critic_result["review_round"] = 1
+            critic_result["enabled"] = self.enable_critic_review
             revision_result = (
                 self.collaboration_agent.apply_critic_revision(plan_result, critic_result)
-                if self.enable_multi_agent_review
+                if self.enable_critic_review
                 else {
                     "agent": "collaboration_agent",
                     "phase": "critic_revision",
@@ -249,11 +277,22 @@ class TaskRunner:
                     "plan_result": plan_result,
                 }
             )
+            decision_trace.record("critic_agent", before_actions=before_critic,
+                                  after_actions=revision_result["plan_result"].get("actions", []),
+                                  duration_ms=(perf_counter() - stage_started) * 1000,
+                                  details={"enabled": self.enable_critic_review, "findings": critic_result.get("findings", []),
+                                           "revision_decisions": revision_result.get("revision_decisions", []), "review_round": 1})
             if revision_result["actions_changed"]:
                 first_critic_result = deepcopy(critic_result)
                 plan_result = revision_result["plan_result"]
-                safety_result = self.safety_agent.review(semantic_result, plan_result, knowledge_result)
+                before_second_safety = deepcopy(plan_result.get("actions", []))
+                stage_started = perf_counter()
+                safety_result = (self.safety_agent.review(semantic_result, plan_result, knowledge_result)
+                                 if self.enable_safety_review else self._assess_without_safety_intervention(semantic_result, plan_result))
                 plan_result["actions"] = safety_result.get("actions", plan_result.get("actions", []))
+                decision_trace.record("safety_agent", before_actions=before_second_safety,
+                                      after_actions=plan_result.get("actions", []), duration_ms=(perf_counter() - stage_started) * 1000,
+                                      details={"enabled": self.enable_safety_review, "review_round": 2, "issues": safety_result.get("issues", [])})
                 critic_result = self.critic_agent.review(
                     semantic_result,
                     plan_result,
@@ -263,6 +302,7 @@ class TaskRunner:
                     knowledge_result,
                 )
                 critic_result["review_round"] = 2
+                critic_result["enabled"] = self.enable_critic_review
                 critic_result["prior_review"] = first_critic_result
             critic_result["revision"] = {key: value for key, value in revision_result.items() if key != "plan_result"}
             plan_result["multi_agent_context"] = {
@@ -276,7 +316,13 @@ class TaskRunner:
             blackboard.add_stage("safety_agent", safety_result)
             blackboard.add_stage("critic_agent", critic_result)
             if self.execute_actions:
+                before_execution = self.environment.get_state(refresh_realtime=False).model_copy(deep=True)
+                stage_started = perf_counter()
                 execution_result = self.execution_agent.execute(plan_result, self.environment)
+                decision_trace.record("execution_agent", before_actions=plan_result.get("actions", []), after_actions=plan_result.get("actions", []),
+                                      before_state=before_execution, after_state=self.environment.get_state(refresh_realtime=False),
+                                      duration_ms=(perf_counter() - stage_started) * 1000,
+                                      details={"executed_count": execution_result.get("executed_count"), "results": execution_result.get("results", [])})
                 feedback_result = self.feedback_agent.evaluate(
                     semantic_result,
                     self.environment.get_state(refresh_realtime=False),
@@ -315,7 +361,13 @@ class TaskRunner:
                     "room": semantic_result["room"],
                     "actions": feedback_result["correction_actions"],
                 }
+                before_correction = self.environment.get_state(refresh_realtime=False).model_copy(deep=True)
+                stage_started = perf_counter()
                 correction_execution = self.execution_agent.execute(correction_plan, self.environment)
+                decision_trace.record("feedback_correction", after_actions=correction_plan["actions"],
+                                      before_state=before_correction, after_state=self.environment.get_state(refresh_realtime=False),
+                                      duration_ms=(perf_counter() - stage_started) * 1000,
+                                      details={"correction_round": correction_round, "executed_count": correction_execution.get("executed_count")})
                 execution_result.setdefault("correction_results", []).append(correction_execution)
                 feedback_result = self.feedback_agent.evaluate(
                     semantic_result,
@@ -326,6 +378,9 @@ class TaskRunner:
             blackboard.add_stage("feedback_agent", feedback_result)
 
             final_state = self.environment.get_state(refresh_realtime=False)
+            decision_trace.record("outcome", details={"feedback_completed": feedback_result.get("completed"),
+                                                       "correction_rounds": correction_round})
+            plan_result["decision_trace"] = decision_trace.snapshot()
             objective_evaluator = evaluation_preference_service or preference_service
             if objective_evaluator:
                 multi_objective = objective_evaluator.evaluate_multi_objective(
@@ -343,6 +398,9 @@ class TaskRunner:
                 blackboard.add_stage("personalization_evaluator", multi_objective)
             blackboard.set_metric("final_action_count", len(plan_result.get("actions", [])))
             blackboard.set_metric("feedback_completed", feedback_result.get("completed"))
+            blackboard.set_workflow_trace_validation(
+                DEFAULT_MULTI_AGENT_WORKFLOW_GRAPH.validate_stage_order(blackboard.snapshot()["stages"])
+            )
             blackboard_snapshot = blackboard.snapshot()
             semantic_result["multi_agent_blackboard"] = deepcopy(blackboard_snapshot)
             plan_result["multi_agent_blackboard"] = deepcopy(blackboard_snapshot)
@@ -378,9 +436,11 @@ class TaskRunner:
                 multi_agent_blackboard=deepcopy(blackboard_snapshot),
             )
         except Exception as exc:
+            decision_trace.record("error", details={"error": str(exc)})
             return AgentCommandResponse(
                 success=False,
                 error=str(exc),
+                plan_result={"decision_trace": decision_trace.snapshot()},
                 final_state=self.environment.get_state(refresh_realtime=False),
             )
 
@@ -553,6 +613,18 @@ class TaskRunner:
         """
         fault = self.experiment_safety_fault or {}
         fault_type = str(fault.get("type", ""))
+        if fault_type == "cooling_window_conflict":
+            room = str(fault.get("room", "living_room"))
+            entities = {f"ac.{room}_main", f"window.{room}_main"}
+            if not entities <= {device.entity_id for device in self.environment.get_state(refresh_realtime=False).devices}:
+                raise ValueError("Conflict fixture requires a configured AC and window")
+            actions = [action for action in plan_result.get("actions", []) if action.get("entity_id") not in entities]
+            actions.extend([
+                {"entity_id": f"ac.{room}_main", "action": "turn_on", "parameters": {"mode": "cool", "setpoint_c": 24}, "reason": "named conflict fixture"},
+                {"entity_id": f"window.{room}_main", "action": "set_opening", "parameters": {"opening_pct": 60}, "reason": "named conflict fixture"},
+            ])
+            return {**plan_result, "actions": actions,
+                    "experiment_safety_fault": {"id": str(fault.get("id", "critic-conflict")), "type": fault_type, "room": room}}
         if fault_type not in {
             "unsafe_window_opening",
             "unsafe_fan_speed",

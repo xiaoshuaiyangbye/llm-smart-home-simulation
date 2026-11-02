@@ -1,0 +1,191 @@
+{
+  "schema_version": "e1_episode_benchmark_spec_v1",
+  "status": "implemented_bounded_software_protocol",
+  "activation_boundary": "User approval authorized implementation of the four proposed improvement stages. The bounded software protocol below has been executed; this does not establish independent semantic-label validity, the original inferential analysis, or real-home outcomes.",
+  "authorization": {
+    "user_instruction": "请把1-4按顺序完善",
+    "scope": "Implement the proposed E1 end-to-end benchmark, semantic/control reliability fixes, observed role contributions, and decision replay UI.",
+    "does_not_close": [
+      "D1 thesis chapter redesign",
+      "RQ5 independent human semantic review",
+      "real-device or field validation"
+    ]
+  },
+  "research_question_focus": [
+    "RQ2",
+    "RQ3",
+    "RQ4"
+  ],
+  "episode_unit": {
+    "definition": "One fresh SmartHomeEnvironment, one user command, optional pre-context, one configured method, one repeat seed, and one fixed post-control evaluation horizon.",
+    "is_independent_population_sample": false,
+    "repeat_interpretation": "Repeat seeds are repeated measurements for stability, not independent task population members."
+  },
+  "target_design": {
+    "unique_episode_count": 600,
+    "unique_episode_count_interpretation": "Compatibility field: 600 configured episodes drawn from 24 developer-authored base scenarios, not 600 independent tasks or population samples.",
+    "methods": [
+      "single_agent",
+      "multi_agent_static",
+      "personalized",
+      "full"
+    ],
+    "repeats_per_episode": 3,
+    "target_run_count": 7200,
+    "minimum_smoke_contract": "At least one deterministic smoke runner must emit schema, method, task_id, repeat_seed, semantic provenance, state fingerprint, final-state metrics, action-change traces, and claim boundary before full runs."
+  },
+  "task_strata": [
+    {
+      "stratum": "ordinary_lighting",
+      "target_unique_episodes": 75
+    },
+    {
+      "stratum": "thermal_comfort",
+      "target_unique_episodes": 90
+    },
+    {
+      "stratum": "humidity_ventilation",
+      "target_unique_episodes": 60
+    },
+    {
+      "stratum": "energy_saving",
+      "target_unique_episodes": 75
+    },
+    {
+      "stratum": "multi_device_coordination",
+      "target_unique_episodes": 75
+    },
+    {
+      "stratum": "safety_fault_injection",
+      "target_unique_episodes": 90
+    },
+    {
+      "stratum": "rag_knowledge_robustness",
+      "target_unique_episodes": 60
+    },
+    {
+      "stratum": "longitudinal_personalization_transfer",
+      "target_unique_episodes": 75
+    }
+  ],
+  "controls": [
+    {
+      "method": "single_agent",
+      "description": "Semantic, planning, execution, and feedback without multi-agent safety/critic review or preference adaptation."
+    },
+    {
+      "method": "multi_agent_static",
+      "description": "Center-orchestrated multi-agent review without personalized planning context."
+    },
+    {
+      "method": "personalized",
+      "description": "Preference-adapted planning with current explicit profile, but without treating unconfirmed experience as a planning prior."
+    },
+    {
+      "method": "full",
+      "description": "Preference-adapted planning with safety review, critic review, feedback loop, and only user-confirmed experience exposed as planning context."
+    }
+  ],
+  "primary_metrics": [
+    "runtime_success",
+    "final_state_success",
+    "semantic_accuracy",
+    "device_selection_f1",
+    "occupied_room_comfort_score",
+    "post_control_horizon_kwh",
+    "weighted_utility",
+    "safety_high_issue_count",
+    "safety_medium_issue_count",
+    "safety_action_changed",
+    "critic_action_changed",
+    "feedback_correction_applied",
+    "request_latency_ms"
+  ],
+  "statistical_plan": {
+    "status": "original_inferential_research_target_not_executed",
+    "primary_comparison": "candidate_method_minus_single_agent within matched task_id, repeat_seed, condition, semantic backend, and initial_state_fingerprint",
+    "model": "mixed_effects_model_with_task_stratum_random_intercept",
+    "nonparametric_check": "cluster_bootstrap_by_unique_episode",
+    "multiple_comparison_policy": "Holm correction across primary method comparisons",
+    "minimum_reporting": "Report descriptive effects even when task clusters are insufficient; do not label them as significance tests."
+  },
+  "implemented_protocol": {
+    "runner": "scripts/run_e1_episode_benchmark.py",
+    "runtime": "backend/app/experiments/episode_benchmark.py uses the actual TaskRunner",
+    "task_fixture": "data/research/e1_episode_tasks.json",
+    "base_scenario_count": 24,
+    "configuration_episode_count": 600,
+    "semantic_mode": "mock",
+    "post_control_evaluation_minutes": 30,
+    "matched_controls": "Fresh isolated environment per run; common initial-state fingerprint, configuration, condition, disturbance seed, semantic backend, provenance, and evaluation horizon across methods.",
+    "outcome_verification": "Developer-authored declarative device/room predicates evaluated independently of TaskRunner's success flag on the immediate and post-step final states. final_state_success means developer state-contract pass rate, not complete user-intent or safety achievement; E1-022 to E1-024 have partial temperature-only outcome coverage. runtime_success is separate.",
+    "simulator_accounting_boundary": "The post-control 30-minute kWh value is a single-step endpoint-power estimate. Action batches additionally apply a five-minute temperature/humidity relaxation without matching clock or energy accounting. The measurement does not represent equal total physical duration across methods, integrated physical energy, or complete control cost.",
+    "statistical_analysis": "Descriptive paired effects with base_task_id cluster bootstrap; configuration variants and repeat seeds stay in their base-scenario cluster.",
+    "bootstrap_cluster_unit": "base_task_id",
+    "original_inferential_plan_executed": false,
+    "unexecuted_original_analysis": [
+      "mixed_effects_model_with_task_stratum_random_intercept",
+      "Holm correction"
+    ],
+    "metric_boundaries": [
+      "Semantic accuracy uses developer-authored intent references without independent review.",
+      "Device selection F1 applies only to explicit device-state predicates; scenes without such predicates are N/A.",
+      "Humidity/ventilation tasks verify actuator states, not achievement of ambient humidity targets.",
+      "final_state_success reports only the declared developer state contract; unasserted intent, personalization benefits, and safety properties remain outside that metric.",
+      "Request latency measures the timed TaskRunner call and excludes earlier scripted feedback training.",
+      "Longitudinal context uses scripted feedback and isolated simulated histories, not real resident feedback.",
+      "RAG conditions use isolated lexical knowledge fixtures, not a measured real prompt-injection distribution."
+    ]
+  },
+  "completed_artifacts": [
+    {
+      "phase": "before_explicit_control_fix_full",
+      "summary": "data/results/e1_task_benchmark/20260907_055214_523861/summary.json",
+      "record_count": 7200,
+      "configuration_episode_count": 600,
+      "base_scenario_count": 24,
+      "repeat_count": 3,
+      "semantic_mode": "mock",
+      "provenance_note": "Historical completed full matrix; source and fixture hashes describe the code and state predicates at generation. Later control fixes and predicate coverage changes prevent attributing cross-version differences to the control fix alone."
+    },
+    {
+      "phase": "after_explicit_control_fix_smoke",
+      "summary": "data/results/e1_task_benchmark/20260907_092614_310836/summary.json",
+      "record_count": 96,
+      "configuration_episode_count": 24,
+      "base_scenario_count": 24,
+      "repeat_count": 1,
+      "semantic_mode": "mock",
+      "provenance_note": "Completed post-fix smoke only; it does not stand in for a post-fix full matrix. Later predicate coverage changes must remain tied to new fixture hashes; different source, fixture, or matrix versions are not a matched estimate of the fix effect."
+    },
+    {
+      "phase": "final_explicit_control_and_state_contract_v2_full",
+      "summary": "data/results/e1_task_benchmark/20260908_033452_721117/summary.json",
+      "record_count": 7200,
+      "configuration_episode_count": 600,
+      "base_scenario_count": 24,
+      "repeat_count": 3,
+      "semantic_mode": "mock",
+      "provenance_note": "Final full run under frozen e1_episode_tasks_v2 and recorded source manifest. This ledger entry was added after the run; frozen_spec.json preserves the executed protocol. Do not attribute differences from historical artifacts to the control fix alone."
+    }
+  ],
+  "provenance_requirements": [
+    "runner_source_sha256",
+    "task_suite_sha256",
+    "semantic_model_id",
+    "semantic_model_revision",
+    "semantic_runtime_fingerprint",
+    "initial_state_fingerprint",
+    "post_control_evaluation_minutes",
+    "artifact_schema_version"
+  ],
+  "existing_smoke_inputs": [
+    "data/results/role_ablation/20260901_024409/summary.json",
+    "data/results/safety_faults/20260901_023745/summary.json",
+    "data/results/personalization_longitudinal/20260901_041732/summary.json",
+    "data/results/rag_knowledge_robustness/20260901_045642/summary.json",
+    "data/results/external_validity/20260901_055641/summary.json"
+  ],
+  "supported_thesis_wording": "The executed mock TaskRunner benchmark supports descriptive method tradeoffs within 24 developer-authored base scenarios and their matched software-simulation configurations, tied to each artifact's frozen source and protocol hashes.",
+  "prohibited_thesis_wording": "The configured episodes or repeat seeds are independent population samples; the original mixed-effects/Holm plan has been executed; the artifacts prove model generalization, real-home safety, real resident satisfaction, or universal multi-agent superiority."
+}

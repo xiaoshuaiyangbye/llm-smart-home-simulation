@@ -51,3 +51,28 @@ def test_isolated_ablation_changes_only_freshness_enforcement() -> None:
     assert primary["absolute_stale_commit_rate_reduction"] == 1.0
     assert primary["guarded_valid_commit_rate"] == 1.0
     assert primary["unguarded_valid_commit_rate"] == 1.0
+
+
+def test_pressure_matrix_smoke_preserves_default_ablation_contract() -> None:
+    records = snapshot_commit_experiment.run_pressure_matrix("smoke")
+    report = snapshot_commit_experiment.summarize_pressure_matrix(records)
+
+    assert len(records) == 24
+    assert report["schema_version"] == "snapshot_commit_pressure_matrix_v1"
+    assert {record["policy"] for record in records} == {"unguarded", "optimistic"}
+    assert {record["planner_delay_ms"] for record in records} == {0, 250}
+    assert {record["event_rate"] for record in records} == {0.0, 1.0}
+    assert {record["fault_rate"] for record in records} == {0.0}
+
+    stale_unguarded = [
+        record for record in records
+        if record["policy"] == "unguarded" and record["event_rate"] == 1.0
+    ]
+    stale_optimistic = [
+        record for record in records
+        if record["policy"] == "optimistic" and record["event_rate"] == 1.0
+    ]
+
+    assert all(record["stale_committed"] for record in stale_unguarded)
+    assert not any(record["stale_committed"] for record in stale_optimistic)
+    assert all(record["commit_status"] == "stale_snapshot_replan_required" for record in stale_optimistic)

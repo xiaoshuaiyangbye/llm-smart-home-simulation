@@ -74,7 +74,7 @@ export function ResearchControlPanel({
         </div>
         <span className={autonomyRunning ? "autonomy-orb active" : "autonomy-orb"} aria-hidden="true" />
       </div>
-      <p className="research-subtitle">根据家中状态自动执行，并在每次操作后学习你的习惯。</p>
+      <p className="research-subtitle">根据模拟环境自动控制，并保留每次决策记录。</p>
       <label className="checkbox-row autonomy-toggle">
         <input
           type="checkbox"
@@ -87,7 +87,7 @@ export function ResearchControlPanel({
             void onAutonomyChange(enabled).catch(() => setAutonomyRequested(!enabled));
           }}
         />
-        <span><strong>{autonomyStopping ? "正在安全停止" : autonomyRequested ? "全屋自动运行中" : "开启全屋自动化"}</strong><small>感知环境 · 自动决策 · 持续学习</small></span>
+        <span><strong>{autonomyStopping ? "正在安全停止" : autonomyRequested ? "全屋自动运行中" : "开启全屋自动化"}</strong><small>感知状态 · 执行控制 · 记录反思</small></span>
       </label>
       <div className="memory-glimpse" aria-label="私有记忆摘要">
         <span><small>住户记忆</small><strong>{privateMemory?.reflections.length ?? 0} 条反思</strong></span>

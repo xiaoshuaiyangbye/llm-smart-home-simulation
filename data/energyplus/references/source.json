@@ -1,0 +1,6 @@
+{
+  "url": "https://raw.githubusercontent.com/NatLabRockies/EnergyPlus/v26.2.0/testfiles/1ZoneUncontrolled.idf",
+  "version": "26.2.0",
+  "sha256": "cc928a894a73601be3b48756b8718229d6d4ff63cbdaa6b05da45f45c665d7bb",
+  "calibration_status": "official_example_uncalibrated"
+}

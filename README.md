@@ -12,6 +12,10 @@
 
 ## 主要能力
 
+模型训练现已分离到独立工程 `P:/smart-home-model-training/`。本仓库保留仿真、前后端、智能体运行与研究评测；训练权重、训练环境和checkpoint由独立工程管理。入口与历史证据迁移说明见 [模型训练交接](docs/model_training_handoff.md)。
+
+EnergyPlus 26.2.0 全屋九热区物理仿真作为独立可选实验后端集成，保留现有模拟器与工作流。当前本机工作台入口、运行步骤、配对实验命令、校准方法与边界见 [EnergyPlus 本地实验指南](docs/energyplus_local_guide.md)。
+
 - 后端：Python + FastAPI，管理仿真状态、虚拟设备、环境模型、智能体编排和 CSV 日志导出。
 - 前端：React + TypeScript + Vite，提供 2D/延迟加载 3D 智能家居控制界面。
 - 闭环控制：语义解析、任务规划、动作执行、环境更新、反馈评估，最多执行 3 轮校正。

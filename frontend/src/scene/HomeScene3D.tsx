@@ -73,7 +73,11 @@ function ApartmentBase() {
   );
 }
 
-function RoomFloor3D({ room, active }: { room: RoomPlan; active: boolean }) {
+function RoomFloor3D({ room, active }: { room: typeof rooms[number]; active: boolean }) {
+  return <>{room.tiles.map((tile, index) => <RoomFloorTile3D key={index} room={{ ...room, ...tile }} active={active} />)}</>;
+}
+
+function RoomFloorTile3D({ room, active }: { room: RoomPlan; active: boolean }) {
   const color = room.floor === "wood" ? palette.woodA : palette.tile;
   return (
     <group position={[room.x, 0, room.z]}>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type {
   AcDeviceState,
   CurtainDeviceState,
@@ -41,7 +42,8 @@ export function ControlPanel({
 }: ControlPanelProps) {
   const weather = state?.outdoor_environment.weather ?? "sunny";
   const timeHour = state?.outdoor_environment.time_hour ?? 14;
-  const focusedRoom = state?.rooms.find((room) => room.occupancy) ?? state?.rooms[0];
+  const [selectedRoom, setSelectedRoom] = useState<RoomId>("living_room");
+  const focusedRoom = state?.rooms.find((room) => room.room_id === selectedRoom) ?? state?.rooms[0];
 
   return (
     <section className="panel control-panel">
@@ -52,7 +54,7 @@ export function ControlPanel({
         </div>
         <small>{focusedRoom ? ROOM_LABELS[focusedRoom.room_id] : "等待住宅状态"}</small>
       </div>
-      <div className="control-grid">
+      <details className="simulation-settings"><summary>调整模拟天气与时间</summary><div className="control-grid">
         <label>
           天气
           <select
@@ -60,10 +62,10 @@ export function ControlPanel({
             disabled={isLoading}
             onChange={(event) => onEnvironmentChange({ weather: event.target.value as WeatherType })}
           >
-            <option value="sunny">sunny</option>
-            <option value="cloudy">cloudy</option>
-            <option value="overcast">overcast</option>
-            <option value="rainy">rainy</option>
+            <option value="sunny">晴天</option>
+            <option value="cloudy">多云</option>
+            <option value="overcast">阴天</option>
+            <option value="rainy">雨天</option>
           </select>
         </label>
         <label>
@@ -79,7 +81,8 @@ export function ControlPanel({
         </label>
         <button type="button" disabled={isLoading} onClick={onStep}>单步仿真</button>
         <button type="button" disabled={isLoading} className="secondary-button" onClick={onReset}>重置系统</button>
-      </div>
+      </div></details>
+      <label className="room-selector">选择要控制的房间<select value={focusedRoom?.room_id ?? selectedRoom} onChange={(event) => setSelectedRoom(event.target.value as RoomId)}>{state?.rooms.map((room) => <option key={room.room_id} value={room.room_id}>{ROOM_LABELS[room.room_id]}</option>)}</select></label>
       <div className="device-controls">
         {focusedRoom && state && (
           <RoomControl

@@ -424,77 +424,6 @@ textarea {
   color: var(--home-orange-ink);
 }
 
-.home-vitals {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
-  gap: 10px;
-  border: 0;
-  border-radius: 0;
-  overflow: visible;
-  background: transparent;
-}
-
-.home-vitals span {
-  position: relative;
-  display: grid;
-  min-height: 68px;
-  gap: 5px;
-  padding: 12px 14px 12px 48px;
-  border: 1px solid var(--home-line);
-  border-radius: 16px;
-  background: var(--home-surface);
-  box-shadow: 0 4px 16px rgba(30, 30, 30, 0.035);
-}
-
-.home-vitals span::before {
-  position: absolute;
-  left: 13px;
-  top: 15px;
-  display: grid;
-  place-items: center;
-  width: 27px;
-  height: 27px;
-  border-radius: 9px;
-  background: var(--home-orange-soft);
-  color: var(--home-orange);
-  content: "⌂";
-  font-size: 14px;
-}
-
-.home-vitals .vital-temperature::before {
-  background: #eef6ff;
-  color: var(--home-blue);
-  content: "°";
-  font-size: 17px;
-  font-weight: 700;
-}
-
-.home-vitals .vital-comfort::before {
-  background: #eef9f2;
-  color: var(--home-green);
-  content: "✓";
-  font-weight: 750;
-}
-
-.home-vitals .vital-power::before {
-  background: #fff8e6;
-  color: #d89400;
-  content: "ϟ";
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.home-vitals small {
-  color: var(--home-muted);
-  font-size: 9px;
-}
-
-.home-vitals strong {
-  color: #303030;
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .dashboard {
   display: grid;
   grid-template-columns: minmax(700px, 1.5fr) minmax(390px, 0.7fr);
@@ -1222,14 +1151,6 @@ input[type="range"] {
     grid-template-columns: minmax(260px, 0.62fr) minmax(540px, 1.38fr);
   }
 
-  .home-vitals span {
-    padding-left: 14px;
-  }
-
-  .home-vitals span::before {
-    display: none;
-  }
-
   .agent-dock {
     grid-template-columns: minmax(300px, 0.72fr) minmax(500px, 1.28fr);
   }
@@ -1337,10 +1258,6 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 
-  .home-vitals {
-    width: 100%;
-  }
-
   .side-panel,
   .agent-dock,
   .operations-grid {
@@ -1395,20 +1312,14 @@ input[type="range"] {
   .workspace-heading h1 {
     font-size: 30px;
   }
-
-  .home-vitals,
-  .memory-glimpse,
-  .research-grid,
-  .private-memory-control,
-  .life-sim-actions,
-  .life-sim-kpis,
-  .life-sim-meta,
-  .operations-grid .summary-grid {
+.memory-glimpse,
+.research-grid,
+.private-memory-control,
+.life-sim-actions,
+.life-sim-kpis,
+.life-sim-meta,
+.operations-grid .summary-grid {
     grid-template-columns: 1fr 1fr;
-  }
-
-  .home-vitals span {
-    min-height: 60px;
   }
 
   .scene-panel {

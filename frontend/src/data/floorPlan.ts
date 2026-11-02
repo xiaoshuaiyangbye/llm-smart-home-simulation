@@ -1,3 +1,4 @@
+import { homeGeometry } from "./homeGeometry";
 import type { DeviceType, RoomId } from "../types/state";
 
 export type WallOrientation = "h" | "v";
@@ -83,7 +84,7 @@ export interface DevicePointPlan {
 export const WALL_THICKNESS = 0.16;
 export const WALL_HEIGHT = 0.68;
 
-export const rooms: RoomPlan[] = [
+const displayedRooms: RoomPlan[] = [
   { id: "bedroom", label: "卧室", x: -4.4, z: -2.75, width: 4.0, depth: 2.9, floor: "wood" },
   { id: "study_room", label: "书房", x: -0.5, z: -2.75, width: 3.8, depth: 2.9, floor: "wood" },
   { id: "bathroom", label: "卫生间", x: 2.95, z: -2.75, width: 3.0, depth: 2.9, floor: "tile" },
@@ -95,12 +96,16 @@ export const rooms: RoomPlan[] = [
   { id: "corridor", label: "走廊", x: -0.45, z: 3.6, width: 4.1, depth: 2.4, floor: "tile", showLabel: false },
 ];
 
+export const rooms = displayedRooms.map((room) => ({ ...room, ...homeGeometry.find((geometry) => geometry.id === room.id)! }));
+
 export const wallRuns: WallRun[] = [
   { id: "outer-top", orientation: "h", x1: -6.45, z1: -4.2, x2: 4.55, z2: -4.2 },
   { id: "outer-left-main", orientation: "v", x1: -6.45, z1: -4.2, x2: -6.45, z2: 2.35 },
   { id: "outer-left-balcony", orientation: "v", x1: -6.45, z1: 2.35, x2: -6.45, z2: 4.5 },
   { id: "outer-right", orientation: "v", x1: 4.55, z1: -4.2, x2: 4.55, z2: 4.8 },
   { id: "outer-balcony-bottom", orientation: "h", x1: -6.45, z1: 4.5, x2: -4.05, z2: 4.5 },
+  { id: "outer-corridor-bottom", orientation: "h", x1: -4.05, z1: 4.5, x2: -1.55, z2: 4.5 },
+  { id: "outer-entry-step", orientation: "v", x1: -1.55, z1: 4.5, x2: -1.55, z2: 4.8 },
   { id: "outer-entry-bottom", orientation: "h", x1: -1.55, z1: 4.8, x2: 4.55, z2: 4.8, gaps: [{ center: 0.05, width: 0.95 }] },
   { id: "top-row-bottom", orientation: "h", x1: -6.45, z1: -1.3, x2: 4.55, z2: -1.3, gaps: [{ center: -3.1, width: 0.92 }, { center: -0.55, width: 0.92 }, { center: 2.25, width: 0.88 }] },
   { id: "bed-study", orientation: "v", x1: -2.4, z1: -4.2, x2: -2.4, z2: -1.3 },

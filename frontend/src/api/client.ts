@@ -35,7 +35,7 @@ function getSessionId(): string {
   return residentId;
 }
 
-async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
+export async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
   const canRetry = !options?.method || options.method === "GET";
   let response: Response | undefined;
   for (let attempt = 0; attempt < (canRetry ? 2 : 1); attempt += 1) {
@@ -79,6 +79,20 @@ async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
   }
   if (response.status === 204) return undefined as T;
   return response.json();
+}
+
+export async function downloadEnergyPlusArtifact(runId: string, filename: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/energyplus/runs/${runId}/files/${filename}`, {
+    credentials: "include",
+    headers: { "X-Simulation-Session": getSessionId() },
+  });
+  if (!response.ok) throw new Error(`下载失败：${filename}`);
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename.split("/").pop() ?? "energyplus-artifact";
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export function fetchSmartHomeState(): Promise<SmartHomeState> {

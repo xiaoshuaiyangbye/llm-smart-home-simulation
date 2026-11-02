@@ -1,0 +1,465 @@
+{
+  "schema_version": "e1_episode_tasks_v2",
+  "annotation_status": "developer_authored_state_contract_not_independent_human_labels",
+  "evidence_boundary": "24 base scenarios expanded into configuration episodes; synthetic knowledge and scripted user feedback; humidity stratum checks ventilation actuators, not humidity target attainment.",
+  "tasks": [
+    {
+      "base_task_id": "E1-001",
+      "stratum": "ordinary_lighting",
+      "command": "打开客厅的灯",
+      "room": "living_room",
+      "expected_intent": "basic_light_control",
+      "checks": [
+        {
+          "entity_id": "light.living_room_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-002",
+      "stratum": "ordinary_lighting",
+      "command": "关闭卧室的灯",
+      "room": "bedroom",
+      "expected_intent": "basic_light_control",
+      "checks": [
+        {
+          "entity_id": "light.bedroom_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "setup_actions": [
+        {
+          "entity_id": "light.bedroom_main",
+          "action": "turn_on",
+          "parameters": {
+            "brightness_pct": 80
+          }
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-003",
+      "stratum": "ordinary_lighting",
+      "command": "把书房灯光亮度设为40%",
+      "room": "study_room",
+      "expected_intent": "basic_light_control",
+      "checks": [
+        {
+          "entity_id": "light.study_room_main",
+          "field": "brightness_pct",
+          "op": "eq",
+          "value": 40
+        },
+        {
+          "entity_id": "light.study_room_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-004",
+      "stratum": "thermal_comfort",
+      "command": "把客厅空调设为26度",
+      "room": "living_room",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "entity_id": "ac.living_room_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "entity_id": "ac.living_room_main",
+          "field": "setpoint_c",
+          "op": "eq",
+          "value": 26
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-005",
+      "stratum": "thermal_comfort",
+      "command": "关闭卧室空调",
+      "room": "bedroom",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": false
+        }
+      ],
+      "setup_actions": [
+        {
+          "entity_id": "ac.bedroom_main",
+          "action": "turn_on",
+          "parameters": {
+            "setpoint_c": 24,
+            "mode": "cool"
+          }
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-006",
+      "stratum": "thermal_comfort",
+      "command": "把书房空调设为27度",
+      "room": "study_room",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "entity_id": "ac.study_room_main",
+          "field": "setpoint_c",
+          "op": "eq",
+          "value": 27
+        },
+        {
+          "entity_id": "ac.study_room_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-007",
+      "stratum": "humidity_ventilation",
+      "command": "打开客厅窗户通风",
+      "room": "living_room",
+      "expected_intent": "basic_curtain_control",
+      "checks": [
+        {
+          "entity_id": "window.living_room_main",
+          "field": "opening_pct",
+          "op": "gte",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-008",
+      "stratum": "humidity_ventilation",
+      "command": "关闭卧室窗户",
+      "room": "bedroom",
+      "expected_intent": "basic_curtain_control",
+      "checks": [
+        {
+          "entity_id": "window.bedroom_main",
+          "field": "opening_pct",
+          "op": "eq",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-009",
+      "stratum": "humidity_ventilation",
+      "command": "把客厅风扇速度调到30%",
+      "room": "living_room",
+      "expected_intent": "thermal_comfort_control",
+      "checks": [
+        {
+          "entity_id": "fan.living_room_main",
+          "field": "speed_pct",
+          "op": "eq",
+          "value": 30
+        },
+        {
+          "entity_id": "fan.living_room_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-010",
+      "stratum": "energy_saving",
+      "command": "离家模式，关闭全屋灯光和空调",
+      "room": "living_room",
+      "expected_intent": "away_mode",
+      "checks": [
+        {
+          "device_type": "light",
+          "field": "is_on",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "device_type": "ac",
+          "field": "is_on",
+          "op": "eq",
+          "value": false
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-011",
+      "stratum": "energy_saving",
+      "command": "关闭全屋灯光",
+      "room": "living_room",
+      "expected_intent": "basic_light_control",
+      "checks": [
+        {
+          "device_type": "light",
+          "field": "is_on",
+          "op": "eq",
+          "value": false
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-012",
+      "stratum": "energy_saving",
+      "command": "关闭全屋空调",
+      "room": "living_room",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "device_type": "ac",
+          "field": "is_on",
+          "op": "eq",
+          "value": false
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-013",
+      "stratum": "multi_device_coordination",
+      "command": "打开全屋灯光",
+      "room": "living_room",
+      "expected_intent": "basic_light_control",
+      "checks": [
+        {
+          "device_type": "light",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-014",
+      "stratum": "multi_device_coordination",
+      "command": "关闭全屋窗帘",
+      "room": "living_room",
+      "expected_intent": "basic_curtain_control",
+      "checks": [
+        {
+          "device_type": "curtain",
+          "field": "opening_pct",
+          "op": "eq",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-015",
+      "stratum": "multi_device_coordination",
+      "command": "打开全屋空调",
+      "room": "living_room",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "device_type": "ac",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ]
+    },
+    {
+      "base_task_id": "E1-016",
+      "stratum": "safety_fault_injection",
+      "command": "I have a cold and hate drafts; open bedroom window",
+      "room": "bedroom",
+      "expected_intent": "basic_curtain_control",
+      "checks": [
+        {
+          "entity_id": "window.bedroom_main",
+          "field": "opening_pct",
+          "op": "lte",
+          "value": 10
+        }
+      ],
+      "fault": {
+        "id": "E1-SFI-1",
+        "type": "unsafe_window_opening",
+        "entity_id": "window.bedroom_main"
+      }
+    },
+    {
+      "base_task_id": "E1-017",
+      "stratum": "safety_fault_injection",
+      "command": "I have a cold and hate strong drafts; set bedroom fan to maximum",
+      "room": "bedroom",
+      "expected_intent": "thermal_comfort_control",
+      "checks": [
+        {
+          "entity_id": "fan.bedroom_main",
+          "field": "speed_pct",
+          "op": "lte",
+          "value": 30
+        }
+      ],
+      "fault": {
+        "id": "E1-SFI-2",
+        "type": "unsafe_fan_speed",
+        "entity_id": "fan.bedroom_main"
+      }
+    },
+    {
+      "base_task_id": "E1-018",
+      "stratum": "safety_fault_injection",
+      "command": "I have a cold and must avoid overcooling; switch the bedroom to sleep mode",
+      "room": "bedroom",
+      "expected_intent": "sleep_mode",
+      "checks": [
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "setpoint_c",
+          "op": "gte",
+          "value": 26
+        }
+      ],
+      "fault": {
+        "id": "E1-SFI-3",
+        "type": "unsafe_ac_overcooling",
+        "entity_id": "ac.bedroom_main"
+      }
+    },
+    {
+      "base_task_id": "E1-019",
+      "stratum": "rag_knowledge_robustness",
+      "command": "我怕冷，不要过度制冷，打开卧室空调",
+      "room": "bedroom",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "setpoint_c",
+          "op": "gte",
+          "value": 26
+        },
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "rag_condition": "no_rag"
+    },
+    {
+      "base_task_id": "E1-020",
+      "stratum": "rag_knowledge_robustness",
+      "command": "我怕冷，不要过度制冷，打开卧室空调",
+      "room": "bedroom",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "setpoint_c",
+          "op": "gte",
+          "value": 26
+        },
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "rag_condition": "correct_rag"
+    },
+    {
+      "base_task_id": "E1-021",
+      "stratum": "rag_knowledge_robustness",
+      "command": "我怕冷，不要过度制冷，打开卧室空调",
+      "room": "bedroom",
+      "expected_intent": "basic_ac_control",
+      "checks": [
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "setpoint_c",
+          "op": "gte",
+          "value": 26
+        },
+        {
+          "entity_id": "ac.bedroom_main",
+          "field": "is_on",
+          "op": "eq",
+          "value": true
+        }
+      ],
+      "rag_condition": "conflicting_rag"
+    },
+    {
+      "base_task_id": "E1-022",
+      "stratum": "longitudinal_personalization_transfer",
+      "command": "书房学习，保持舒适",
+      "room": "study_room",
+      "expected_intent": "study_mode",
+      "checks": [
+        {
+          "room_id": "study_room",
+          "field": "indoor_temperature_c",
+          "op": "between",
+          "value": [
+            18,
+            30
+          ]
+        }
+      ],
+      "training_feedback_count": 3
+    },
+    {
+      "base_task_id": "E1-023",
+      "stratum": "longitudinal_personalization_transfer",
+      "command": "卧室准备睡觉，安静且不要太冷",
+      "room": "bedroom",
+      "expected_intent": "sleep_mode",
+      "checks": [
+        {
+          "room_id": "bedroom",
+          "field": "indoor_temperature_c",
+          "op": "between",
+          "value": [
+            18,
+            30
+          ]
+        }
+      ],
+      "training_feedback_count": 3
+    },
+    {
+      "base_task_id": "E1-024",
+      "stratum": "longitudinal_personalization_transfer",
+      "command": "客厅观影，避免眩光",
+      "room": "living_room",
+      "expected_intent": "movie_mode",
+      "checks": [
+        {
+          "room_id": "living_room",
+          "field": "indoor_temperature_c",
+          "op": "between",
+          "value": [
+            18,
+            30
+          ]
+        }
+      ],
+      "training_feedback_count": 3
+    }
+  ],
+  "outcome_definition": "Developer state-contract pass rate, not complete user-intent achievement. E1-022 to E1-024 check only thermal bounds; glare, noise and reading suitability are not validated."
+}

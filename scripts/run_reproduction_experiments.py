@@ -30,6 +30,7 @@ from dotenv import load_dotenv
 from app.agents.feedback_agent import FeedbackAgent
 from app.agents.llm_client import TARGETS_BY_INTENT
 from app.experiments.logger import ExperimentLogger
+from app.experiments.semantic_targets import evaluate_applicable_targets, summarize_applicable_targets
 from app.experiments.task_runner import TaskRunner
 from app.schemas.task_schema import AgentCommandRequest
 from app.simulation.baseline_policy import plan_conventional_baseline_actions
@@ -991,6 +992,11 @@ def build_record(
     target_measurement["applicable"] = bool(
         group.semantic_applicable and target_measurement["applicable"]
     )
+    explicit_target_measurement = evaluate_applicable_targets(
+        str(task.get("user_command", "")) if group.semantic_applicable else "",
+        task.get("expected_targets") if group.semantic_applicable else {},
+        semantic.get("targets") if group.semantic_applicable else {},
+    )
     llm_metrics = semantic.get("llm_metrics", {}) if isinstance(semantic.get("llm_metrics"), dict) else {}
 
     intent_correct = bool(semantic.get("intent") == task.get("expected_intent")) if group.semantic_applicable else ""
@@ -1085,6 +1091,11 @@ def build_record(
         "target_predicted_key_count": target_measurement["predicted_key_count"],
         "target_range_iou_percent": target_measurement["range_iou_percent"],
         "target_exact_match": target_measurement["exact_match"],
+        "explicit_target_applicable": explicit_target_measurement["applicable"],
+        "explicit_target_exact_match": explicit_target_measurement["exact_match"],
+        "explicit_target_field_denominator": explicit_target_measurement["denominator"],
+        "explicit_target_review_required": explicit_target_measurement["review_required"],
+        "explicit_target_metrics_json": json.dumps(explicit_target_measurement, ensure_ascii=False, sort_keys=True),
         "expected_devices": "|".join(expected_devices),
         "planned_device_types": "|".join(planned_device_types),
         "device_selection_expected_count": device_selection["expected_count"],
@@ -1214,11 +1225,17 @@ def target_range_metrics(expected_targets: object, predicted_targets: object) ->
             "exact_match": False,
         }
     expected = validate_target_annotation("expected", expected_targets)
-    predicted = (
-        validate_target_annotation("predicted", predicted_targets)
-        if isinstance(predicted_targets, dict) and predicted_targets
-        else {}
-    )
+    try:
+        predicted = (
+            validate_target_annotation("predicted", predicted_targets)
+            if isinstance(predicted_targets, dict) and predicted_targets
+            else {}
+        )
+    except ValueError:
+        # Preserve valid-input historical metrics, but retain malformed model
+        # output as a failure instead of aborting and losing the task record.
+        # The original predicted_targets object is still saved by build_record.
+        predicted = {}
     keys = sorted(set(expected) | set(predicted))
     ious: list[float] = []
     for key in keys:
@@ -1298,6 +1315,7 @@ def summarize_records(records: list[dict[str, Any]], group: ExperimentGroup) -> 
         "control_goal_accuracy_percent": applicable_rate(records, "control_goal_correct", "control_goal_applicable"),
         "target_exact_match_percent": applicable_rate(records, "target_exact_match", "target_applicable"),
         "target_range_iou_percent": applicable_average(records, "target_range_iou_percent", "target_applicable"),
+        "explicit_target_metrics": summarize_explicit_target_records(records),
         "device_selection_accuracy_percent": average(records, "device_selection_accuracy_percent"),
         "device_selection_precision_percent": average(records, "device_selection_precision_percent"),
         "device_selection_recall_percent": average(records, "device_selection_recall_percent"),
@@ -1314,6 +1332,13 @@ def summarize_records(records: list[dict[str, Any]], group: ExperimentGroup) -> 
         "comfort_retention_rate_percent": applicable_rate(records, "comfort_retained", "outcome_metrics_applicable"),
         "failure_counts": dict(Counter(record["failure_type"] for record in records)),
     }
+
+
+def summarize_explicit_target_records(records: list[dict[str, Any]]) -> dict[str, Any]:
+    return summarize_applicable_targets([
+        json.loads(record["explicit_target_metrics_json"])
+        for record in records if record.get("explicit_target_metrics_json")
+    ])
 
 
 def primary_performance_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1363,6 +1388,7 @@ def summarize_by_group_and_category(records: list[dict[str, Any]]) -> list[dict[
                 "control_goal_accuracy_percent": applicable_rate(items, "control_goal_correct", "control_goal_applicable"),
                 "target_exact_match_percent": applicable_rate(items, "target_exact_match", "target_applicable"),
                 "target_range_iou_percent": applicable_average(items, "target_range_iou_percent", "target_applicable"),
+                "explicit_target_metrics": summarize_explicit_target_records(items),
                 "device_selection_accuracy_percent": average(items, "device_selection_accuracy_percent"),
                 "device_selection_precision_percent": average(items, "device_selection_precision_percent"),
                 "device_selection_recall_percent": average(items, "device_selection_recall_percent"),
@@ -1848,6 +1874,28 @@ def render_report(summary: dict[str, Any]) -> str:
             f"{format_metric(item['control_goal_accuracy_percent'])} | "
             f"{format_metric(item['target_exact_match_percent'])} | {format_metric(item['target_range_iou_percent'])} | "
             f"{item['device_selection_accuracy_percent']:.2f} | {item['device_selection_f1_percent']:.2f} |"
+        )
+
+    lines.extend([
+        "",
+        "## Explicit Numeric Target Applicability (additive; primary isolated repeat)",
+        "",
+        "Existing target exact match, range IoU and failure classifications above remain unchanged. "
+        "This additional metric only scores numeric temperature, illuminance and humidity fields "
+        "explicitly requested in the command. Missing or malformed predictions are failures. "
+        "Defaults are excluded; qualitative, negated, conditional and relative requests require review. "
+        "The lexical applicability rule is conservative and is not an independent annotation review. "
+        "Reference status: `existing_labels_not_independently_adjudicated`; RQ5 remains blocked.",
+        "",
+        "| Group | Applicable tasks | Field denominator | Exact match % | Field exact match % | Review required |",
+        "|---|---:|---:|---:|---:|---:|",
+    ])
+    for item in summary["group_summaries"]:
+        explicit = item.get("explicit_target_metrics", summarize_applicable_targets([]))
+        lines.append(
+            f"| {item['group_name']} | {explicit['applicable_task_count']} | {explicit['field_denominator']} | "
+            f"{format_metric(explicit['exact_match_percent'])} | {format_metric(explicit['field_exact_match_percent'])} | "
+            f"{explicit['review_required_count']} |"
         )
 
     lines.extend(

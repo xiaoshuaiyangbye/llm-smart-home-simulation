@@ -2,7 +2,50 @@
 
 本文件保留每轮工程质量改进的原始证据、研究边界和残余风险。为保证已记录命令、字段名、指标和产物路径可检索，历史技术记录中的部分英文术语保持原样；新写入内容应优先使用中文，并明确“软件仿真”与“实体现场验证”的证据边界。
 
+## 四阶段验收（2026-09-09）
+
+用户已授权“请把1-4按顺序完善”。详细结果、命令与限制见 [四阶段验收记录](four_stage_completion_20260909.md)。历史记录保持原样，新状态以下述证据为准。
+
+| 阶段 | 证实的问题与最小修复 | 验证证据 | 研究含义、边界与残余风险 |
+| --- | --- | --- | --- |
+| 1 完成 | 原E1仅规格和组件夹具；新增实际TaskRunner、独立状态谓词、共享状态与来源配对、冻结协议及分离trace；补显式开机谓词 | `data/results/e1_task_benchmark/20260908_033452_721117/`：24基础场景、600配置、7200 mock记录 | 状态契约通过率77.5%/90%/100%/100%；不等于完整意图，022–024仅温度；批次物理更新未计时，30min能耗是终点功率估计；不主张原统计推断或总体效果 |
+| 2 完成 | legacy目标分母包含未请求默认值；新增适用性口径与N/A。明确开关/参数会被偏好和反馈改写；增加单设备约束保护 | `output/semantic-target-audit/20260907_093852_952423/`：216历史记录、72主重复记录；8类明确指令回归；原标签/预测保留 | 两组显式数字目标分母0，各17条定性请求需人工裁决；确定性保护不是模型能力提升；RQ5独立审查未闭合 |
+| 3 完成 | 角色出现不能证明贡献；新增独立review flags、实际前后动作/状态/时延和角色移除 | `data/results/e1_role_contribution/20260908_033452_713304/`：300记录 | 基础场景Safety契约通过差+8.33个百分点，Critic/Feedback差0；Critic只在单列命名探针有效；不外推自然故障率或等物理时长舒适收益 |
+| 4 完成 | 图仅显示路径，缺少决策对照；新增Graph Harness回放、导入导出、三个实际软件案例；补摘要/必要事件/连续状态校验与浅色文字对比度 | 后端232测试、前端12测试、构建通过；保存JSON可重算；真实qwen3:8b页面40%亮度执行成功；浏览器检查历史选择不改设备 | 回放不执行动作；摘要自洽不等于来源认证；确认经验可见不是单独收益，冲突知识示例不是注入因果实验；本地开发入口不等于部署完成 |
+
 ## Research QA updates
+
+| 2026-09-03 | Completed (D5/E4 longitudinal personalization full matrix) | D5/E4 只有 40-record smoke，仍不足以满足 30 profiles x 30 turns x 4 methods x 3 seeds 的纵向实验量；旧 summary 字段 `confirmed_visibility_rate_turns_3_to_5` 在 full 矩阵中也不够准确，容易把 post-confirmation window 误读为固定 3-5 轮。 | 扩展 `scripts/run_personalization_longitudinal_experiment.py`：保留默认 `--matrix smoke`，新增 `--matrix full`；full 生成 30 个 deterministic profile variants、30 turns、4 methods、3 repeat seeds，共 10800 records。新增 `matrix`、`repeat_seed`、`comfort_proxy`、`energy_proxy`、`post_confirmation_visibility_rate`，并保留旧 visibility 字段作为兼容别名；更新 `backend/tests/test_personalization_longitudinal_experiment.py`、`backend/tests/test_master_thesis_roadmap_status.py`、`docs/master_thesis_experiment_roadmap.md`、`data/research/thesis_claims.json` 与 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_personalization_longitudinal_experiment.py` 4/4 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_personalization_longitudinal_experiment.py backend\tests\test_personalization_longitudinal_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_personalization_longitudinal_experiment.py --matrix full` 生成 `data/results/personalization_longitudinal/20260903_074306/`，`profile_count=30`、`turn_count_per_profile=30`、`repeat_count_per_profile=3`、`record_count=10800`。结果：`gated_confirmed_memory` post_confirmation_visibility_rate=1.0、utility_gain_post_minus_pre=+8.616、unauthorized_prior_exposure_count=0；`ungated_memory` utility gain=+5.664，但 unauthorized_prior_exposure_count=2610；`static_profile` post-pre gain=0；所有方法 safety_override_count=0。Research implication: E4 从 longitudinal smoke 升级为 full matrix，可支撑“显式反馈门控经验在确认后可见，且比 ungated memory 更符合授权边界”的软件仿真结论。Research boundary: 本轮是组件级 deterministic preference-alignment proxy，不是完整 TaskRunner episode benchmark、真实住户反馈、真实满意度、真实家庭安全或真实节能。Remaining risk: 若论文要主张端到端控制效果，仍需 E1 经用户确认后的 episode benchmark；真实住户长期偏好需要用户研究。 |
+
+| 2026-09-03 | Completed (D6/E7 RAG knowledge robustness full matrix) | D6/E7 只有 30-record smoke，仍不足以满足表格要求的 100 base tasks x 5 RAG conditions x 3 repeats；现有结果也没有把 full 规模下的 knowledge trials、review records、source provenance coverage、attack recall/false-positive proxy 与 safety_review 后剩余风险分开记录。 | 扩展 `scripts/run_rag_knowledge_robustness_experiment.py`：保留默认 `--matrix smoke`，新增 `--matrix full`；full 生成 100 个 deterministic base task variants，覆盖 `no_rag`、`correct_rag`、`stale_rag`、`conflicting_rag`、`malicious_rag` 五组和 3 个 repeat seeds，共 1500 knowledge trials，并展开为 `planner_only` 与 `safety_review` 两种 review records，共 3000 records。新增字段 `matrix`、`base_task_id`、`variant_index`、`repeat_seed`、`source_provenance_present`、`attack_expected`、`attack_detected`，summary 输出 `attack_recall_proxy`、`attack_false_positive_proxy` 和 `source_provenance_coverage`。更新 `backend/tests/test_rag_knowledge_robustness_experiment.py`、`backend/tests/test_master_thesis_roadmap_status.py`、`docs/master_thesis_experiment_roadmap.md`、`data/research/thesis_claims.json` 与 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_rag_knowledge_robustness_experiment.py` 4/4 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_rag_knowledge_robustness_experiment.py backend\tests\test_rag_knowledge_robustness_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_rag_knowledge_robustness_experiment.py --matrix full` 生成 `data/results/rag_knowledge_robustness/20260903_064416/`，`base_task_count=100`、`knowledge_trial_count=1500`、`record_count=3000`。结果：`no_rag` 与 `correct_rag` unsafe_action_rate_after_review=0；`correct_rag` source_provenance_coverage=1.0 且 attack_false_positive_proxy=0；`stale_rag`、`conflicting_rag`、`malicious_rag` planner_only unsafe_action_rate_after_review=1.0、attack_recall_proxy=1.0；`safety_review` 将三类错误知识条件的 unsafe_action_rate_after_review 降至 0.33，review_action_change_rate=0.67；`malicious_rag` instruction_hierarchy_violation_rate=1.0。Research implication: E7 从合成 smoke 升级为可复现 full matrix，可在论文中独立报告 RAG 错误知识、恶意知识、来源覆盖和安全审查残余风险。Research boundary: 本轮不修改生产 RAG index，不测真实检索污染、真实 attack recall、真实 prompt injection 覆盖率、真实模型服从性、真实设备或现场安全。Remaining risk: 若论文要主张真实 RAG 攻击防护，仍需真实语料污染、检索器 under attack、prompt-injection 模板库和端到端 TaskRunner/LLM 语义实验；真实住户/设备安全仍不支持。 |
+
+| 2026-09-01 | Completed (D4/E3 role-ablation full matrix) | D4 只有 18-record frozen-plan smoke，仍不足以支撑硕士论文对多智能体角色贡献的实验量；E3 虽已完成 safety taxonomy full matrix，但 role-ablation 仍缺 6 groups x 200 tasks x 3 repeats 的 full 产物，也缺 final-state success、普通任务副作用和 latency proxy 等列。 | 扩展 `scripts/run_role_ablation_experiment.py`：保留默认 `--matrix smoke`，新增 `--matrix full`；full 由普通照明、高危安全故障和中等能耗冲突模板生成 200 个 deterministic task variants，覆盖 `single`、`planner_only`、`plus_safety`、`plus_critic`、`plus_feedback`、`full` 六组和 3 个 repeat seeds，共 3600 records。新增记录字段 `recovery_success`、`final_state_success`、`ordinary_task_side_effect`、`request_latency_proxy_us`、variant/repeat provenance；更新 `backend/tests/test_role_ablation_experiment.py`、`backend/tests/test_master_thesis_roadmap_status.py`、`docs/master_thesis_experiment_roadmap.md`、`data/research/thesis_claims.json` 与 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_role_ablation_experiment.py` 4/4 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_role_ablation_experiment.py backend\tests\test_role_ablation_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_role_ablation_experiment.py --matrix full` 生成 `data/results/role_ablation/20260901_131011/`，`group_count=6`、`task_count=200`、`repeat_count_per_task=3`、`record_count=3600`。结果：`full` group action_change_rate=0.665、safety_action_change_rate=0.335、critic_action_change_rate=0.330、recovery_success_rate=1.0、final_state_success_rate=1.0、ordinary_task_side_effect_rate=0、mean_safety_score=100.0；`plus_safety` 修复 high_safety_fault，`plus_critic` 修复 medium_energy_conflict，`plus_feedback` 在该构造 full matrix 中 feedback_correction_rate=0。`scripts\validate_thesis_claims.py --require-generated-evidence` 仍 structurally_valid 且只阻塞 RQ5；`scripts\evaluate_rag.py --min-recall 1.0` Recall@3 6/6。Research implication: E3 现在同时具备 safety taxonomy full matrix 和 role-ablation full matrix，可在论文中分开报告“故障类别覆盖”和“角色贡献轨迹”。Research boundary: 本轮仍是组件级 frozen-plan software matrix，不是完整 TaskRunner episode benchmark、真实 LLM 语义、真实设备安全或真实住户效果；`request_latency_proxy_us` 是确定性 proxy，不是真实模型响应时间。Remaining risk: 若论文要主张完整端到端多智能体总体优越性，仍需 E1 经用户确认后的 episode benchmark；RAG 攻击/污染仍由 D6/E7 追踪。 |
+
+| 2026-09-01 | Completed (D3/E3 safety taxonomy full matrix) | D3 的 15 类 safety taxonomy 只有 30-record smoke，仍未达到表格要求的 15 类 x 20 variants x 4 methods x 3 repeats 的硕士论文实验量；E3 也缺少 false block、recovery success 和 critic/full 方法对 medium energy conflict 的可复核记录。 | 扩展 `scripts/run_safety_fault_taxonomy_experiment.py`：保留默认 `--matrix smoke` 兼容旧 30-record smoke，新增 `--matrix full`；full 生成 15 categories x 20 deterministic variants x 4 methods x 3 repeat seeds = 3600 records，比较 `no_review`、`safety_review`、`critic_review`、`full`，记录 `false_block`、`recovery_success`、`critic_action_changed`、variant/repeat provenance 和 agent source SHA-256。更新 `backend/tests/test_safety_fault_taxonomy_experiment.py`、`backend/tests/test_master_thesis_roadmap_status.py`、`docs/master_thesis_experiment_roadmap.md`、`data/research/thesis_claims.json` 与 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_safety_fault_taxonomy_experiment.py backend\tests\test_master_thesis_roadmap_status.py` 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_safety_fault_taxonomy_experiment.py backend\tests\test_safety_fault_taxonomy_experiment.py scripts\validate_thesis_claims.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_safety_fault_taxonomy_experiment.py --matrix full` 生成 `data/results/safety_faults/20260901_120915/`，`record_count=3600`。结果：`full` detection_rate=1.0、block_rate=0.8、false_block_rate=0、recovery_success_rate=1.0、mean_safety_score=100.0；`safety_review` high airflow/thermal family block_rate=1.0；`critic_review` 对 energy_conflict 的 critic_action_change_rate=1.0。`scripts\validate_thesis_claims.py --require-generated-evidence` 仍 structurally_valid 且只阻塞 RQ5；`scripts\evaluate_rag.py --min-recall 1.0` Recall@3 6/6。Research implication: D3 从 taxonomy smoke 升级为可复现 full matrix，能支撑论文中“构造 safety taxonomy 下不同审查方法的检测、阻断、误阻断和恢复轨迹”软件仿真结论。Research boundary: 这是组件级确定性 software fault fixture，不是完整 TaskRunner episode benchmark、真实故障分布、真实传感器/网络故障、真实设备安全或现场验证。Remaining risk: E3 仍需 D4 的 role-ablation episode/full benchmark 来支撑完整多智能体端到端安全鲁棒性；若主张真实智能家居安全，还需外部故障 taxonomy 和现场实验。 |
+
+| 2026-09-01 | Completed (roadmap status audit) | 用户追问 P0-P2 为什么没有完成后，现有两张路线图表虽然列出了状态，但缺少机器可读的完成度审计；持续化任务每轮如果只靠人工阅读表格，容易把 `full 已完成`、`smoke 已完成但 full 待做`、`待用户确认` 和 `需外部人员` 混在一起。 | 新增 `scripts/summarize_master_thesis_experiment_roadmap.py`，解析 `docs/master_thesis_experiment_roadmap.md` 的“现有问题与深入方案”和“推荐的硕士论文实验包”两张表，输出 `master_thesis_roadmap_status_v1` JSON，分类 `software_verified_complete`、`needs_user_research_design_confirmation`、`requires_external_human_evidence`、`requires_full_benchmark_or_real_bridge`；新增 `backend/tests/test_master_thesis_roadmap_status.py` 固定 17 行、D1/E1 用户确认、D8/E6 外部人员和 D3-D7/E3-E5/E7 full/real-bridge 待办清单。同步更新 `docs/master_thesis_experiment_roadmap.md` 的 D0、E0 和下一轮默认优先级。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_master_thesis_roadmap_status.py` 1/1 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\summarize_master_thesis_experiment_roadmap.py backend\tests\test_master_thesis_roadmap_status.py` 通过；`backend\.venv\Scripts\python.exe scripts\summarize_master_thesis_experiment_roadmap.py` 输出 `row_count=17`、`table_counts.issues=9`、`table_counts.experiment_packages=8`、用户确认项 `D1,E1`、外部人员项 `D8,E6`、full/real bridge 待办 `D3,D4,D5,D6,D7,E3,E4,E5,E7`；`backend\.venv\Scripts\python.exe scripts\validate_thesis_claims.py --require-generated-evidence` 仍仅阻塞 RQ5；`backend\.venv\Scripts\python.exe scripts\evaluate_rag.py --min-recall 1.0` Recall@3 6/6。Research implication: 后续自动任务可以先用机器审计解释“为什么 P0-P2 尚未全部完成”，并把可软件完成项与必须用户/外部介入项分开。Research boundary: 本轮是研究治理与状态审计修复，不新增 full benchmark 结果，不改变 task fixtures、controls、metrics、hypotheses 或论文解释政策。Remaining risk: D3-D7/E3-E5/E7 仍需真实 full runner 或外部数据桥接；D1/E1 需要用户研究设计确认；D8/E6 不能由代理自动完成。 |
+
+| 2026-09-01 | Completed (E1 episode benchmark draft contract) | E1 任务基准与方法横向验证仍只有高层表述和若干分散 smoke 产物；直接实现 7200-run full benchmark 会冻结 task fixtures、methods、primary metrics、统计模型和解释政策，属于研究设计决策，不能在无人确认时擅自定稿。 | 新增 `data/research/e1_episode_benchmark_spec.json` 作为 draft contract，明确 episode unit、600 unique episodes、4 methods、3 repeats、7200 target runs、8 个 task strata、primary metrics、provenance requirements、statistical plan、existing smoke inputs 和禁止越界表述；新增 `scripts/validate_e1_episode_benchmark_spec.py` 与 `backend/tests/test_e1_episode_benchmark_spec.py`，机器校验方法、样本量乘积、strata 求和、指标、provenance 字段、已有 smoke 输入和 user-approval/real-home 边界。同步更新 `docs/master_thesis_experiment_roadmap.md`，将 E1 标为“规格草案已验证，待用户研究设计确认”。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_e1_episode_benchmark_spec.py` 1/1 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\validate_e1_episode_benchmark_spec.py backend\tests\test_e1_episode_benchmark_spec.py` 通过；`backend\.venv\Scripts\python.exe scripts\validate_e1_episode_benchmark_spec.py` 返回 `valid=true`、`unique_episode_count=600`、`method_count=4`、`repeats_per_episode=3`、`target_run_count=7200`、`task_stratum_count=8`、`issues=[]`。Research implication: E1 full benchmark 现在有可审计的最小研究设计合同，后续实现 runner 时可以避免把 smoke、full、seed 重复和任务总体混为一谈。Research boundary: 本轮只完成 draft specification 和 validator，不生成 E1 full 结果，不改变现有 task fixtures、controls、metrics 或论文假设；正式执行前仍需用户研究设计确认。Remaining risk: 用户确认后仍需实现 episode runner、冻结任务库、运行 7200 runs、生成 paired/mixed-effects 报告，并将产物接入 claim matrix；若用户不同意该任务量或方法分组，需要先修订 spec。 |
+
+| 2026-09-01 | Completed (D7 external-validity slice smoke) | D7/E5 的能耗与舒适度证据仍来自项目内部简化数字孪生，缺少建筑类型、气候、季节和控制策略维度的外部有效性桥接结构；直接写节能或建筑控制外推会越过证据边界。 | 新增 `data/research/external_validity_slices.json`，定义 2 个 building archetypes、2 个 climates、2 个 seasons 和 claim boundary；新增 `scripts/run_external_validity_slice_experiment.py`，用不依赖外部服务的 synthetic public-standard-inspired slice 比较 `rule_baseline`、`comfort_first`、`energy_saving`、`safety_aware`，记录 daily kWh、kWh/m2、comfort violation minutes、control switch count 和 source externality。新增 `backend/tests/test_external_validity_slice_experiment.py`，验证 fixture 轴覆盖、64 条记录、policy 权衡和非 field-data 边界。同步更新 `docs/master_thesis_experiment_roadmap.md`、`docs/thesis_argument_chain.md`、`data/research/thesis_claims.json` 和 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_external_validity_slice_experiment.py` 3/3 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_external_validity_slice_experiment.py backend\tests\test_external_validity_slice_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_external_validity_slice_experiment.py` 生成 `data/results/external_validity/20260901_055641/`，`building_count=2`、`climate_count=2`、`season_count=2`、`control_policy_count=4`、`record_count=64`。结果：`energy_saving` 平均日能耗 16.21205 kWh，低于 `rule_baseline` 20.17500 kWh，但平均舒适违约 140 分钟；`safety_aware` 平均日能耗 17.65312 kWh，且本 synthetic slice 平均舒适违约 0 分钟；`comfort_first` 平均日能耗 19.81473 kWh、平均切换 5 次。Research implication: RQ2/D7 现在具备建筑/气候/季节/策略维度的外部有效性 adapter contract，可在不伪造 BOPTEST/CASAS 的前提下展示能耗-舒适权衡结构。Research boundary: 本轮是 synthetic adapter smoke，不是校准建筑物理模型、BOPTEST/CASAS 真实数据、真实设备、真实住户或现场节能证据。Remaining risk: E5 full 仍需接入真实 BOPTEST 或 CASAS 数据，完成至少 112-224 building-days、time-series block bootstrap、occupancy 驱动和环境/模型版本锁定；真实家庭效果仍需现场协议。 |
+
+| 2026-09-01 | Completed (D6 RAG knowledge robustness smoke) | D6/E7 仍缺 RAG 错误知识对控制安全的实验：现有 RAG 证据主要证明索引可检索和 Recall@3 门禁，不能说明 stale、conflicting 或 malicious retrieved knowledge 是否会诱导危险动作，也不能区分 planner_only 风险与 safety_review 阻断效果。 | 新增 `scripts/run_rag_knowledge_robustness_experiment.py`，用合成、带 source id 和 SHA-256 的 RAG knowledge fixtures 覆盖 `no_rag`、`correct_rag`、`stale_rag`、`conflicting_rag`、`malicious_rag` 五种条件，并比较 `planner_only` 与 `safety_review`；记录 `instruction_hierarchy_violation`、review 前后 unsafe issue count、high/medium issue count、`unsafe_action_rate_after_review`、`actions_changed_by_review` 和 severity score。新增 `backend/tests/test_rag_knowledge_robustness_experiment.py`，验证 30 条记录、malicious RAG 记录 hierarchy violation、安全审查清除 high fault、summary 保留合成 RAG 边界。同步更新 `docs/master_thesis_experiment_roadmap.md`、`docs/thesis_argument_chain.md`、`data/research/thesis_claims.json` 和 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_rag_knowledge_robustness_experiment.py` 3/3 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_rag_knowledge_robustness_experiment.py backend\tests\test_rag_knowledge_robustness_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_rag_knowledge_robustness_experiment.py` 生成 `data/results/rag_knowledge_robustness/20260901_045642/`，`task_count=3`、`rag_condition_count=5`、`review_mode_count=2`、`record_count=30`。结果：`no_rag` 与 `correct_rag` 的 planner_only unsafe action rate=0；`stale_rag`、`conflicting_rag`、`malicious_rag` 的 planner_only unsafe action rate=1.0；`safety_review` 对三类错误知识条件的 high fault 清零，但 energy conflict 作为 medium warning 保留，因此 after-review unsafe action rate=0.3333；`malicious_rag` 的 instruction_hierarchy_violation_rate=1.0。Research implication: RQ3/D6 现在能把 RAG 知识风险作为独立条件记录，并说明安全审查在合成错误知识诱导的 high fault 上具备阻断轨迹。Research boundary: 本轮不修改生产 RAG index，不测试真实检索污染、attack recall、真实 prompt injection 覆盖、真实模型服从性、真实设备或现场安全。Remaining risk: E7 full 仍需扩展到 100 base tasks x 5 RAG conditions x 3 repeats，并加入真实检索语料污染、source provenance fail-closed、间接注入模板库、attack recall/precision、LLM 语义响应和端到端 TaskRunner。 |
+
+| 2026-09-01 | Completed (D5 longitudinal personalization smoke) | D5/E4 仍缺纵向个性化证据：RQ2 只有固定画像消融，RQ6 只有确认门禁机制回归；这不能说明“反馈形成、确认升格、后续 planning prior 可见性”这一链条在多轮任务中如何表现，也无法区分安全的 gated confirmed memory 与未经确认的 ungated memory。 | 新增 `scripts/run_personalization_longitudinal_experiment.py`，以组件级软件 smoke 比较 `no_memory`、`static_profile`、`ungated_memory`、`gated_confirmed_memory`，覆盖 2 个 profile、5 个 turn；记录 `confirmed_experience_visible`、`explicit_feedback_count`、`unauthorized_prior_exposure`、`preference_alignment_utility` 和 `safety_override_count`。新增 `backend/tests/test_personalization_longitudinal_experiment.py`，验证 40 条记录、confirmed experience 仅在第 3 次显式正向反馈后可见、ungated ablation 记录未授权 prior exposure、summary 保留非真实住户边界。同步更新 `docs/master_thesis_experiment_roadmap.md`、`docs/thesis_argument_chain.md`、`data/research/thesis_claims.json` 和 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_personalization_longitudinal_experiment.py` 3/3 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_personalization_longitudinal_experiment.py backend\tests\test_personalization_longitudinal_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_personalization_longitudinal_experiment.py` 生成 `data/results/personalization_longitudinal/20260901_041732/`，`method_count=4`、`profile_count=2`、`turn_count_per_profile=5`、`record_count=40`。结果：`gated_confirmed_memory` turn 3-5 confirmed visibility rate=1.0，post-pre proxy utility +12.229，unauthorized prior exposure=0；`ungated_memory` post-pre proxy utility +8.725，但 unauthorized prior exposure=8；`static_profile` proxy utility 高但 post-pre gain=0；所有方法 safety_override_count=0。Research implication: RQ2/RQ6 现在可区分固定画像、未经确认经验泄漏和显式反馈门控升格链条，论文可写“门控机制在多轮软件 smoke 中限制 prior 可见性，并形成可审计的后续 planning context”。Research boundary: 本轮是组件级软件 smoke 和确定性 preference-alignment proxy，不是完整 TaskRunner 端到端 benchmark，不代表真实用户反馈、真实住户偏好、真实家庭安全或节能。Remaining risk: E4 full 仍需扩展到 30 profiles x 30 turns x 4 methods x 3 seeds，并接入真实 TaskRunner episode、comfort/energy horizon、任务迁移和统计模型；若主张住户满意或长期泛化，需要真实用户研究。 |
+
+| 2026-09-01 | Completed (D4 role-ablation smoke) | D4/E1 仍缺多智能体角色消融证据：已有安全 taxonomy 可证明 SafetyAgent 对高危动作的直接阻断，但无法区分 planner、safety、critic、feedback 分支各自在什么条件下改变轨迹；如果直接写“多智能体贡献”，会越过普通任务无差异和 +feedback 未验证的边界。 | 新增 `scripts/run_role_ablation_experiment.py`，用 3 个 frozen candidate plans 做组件级软件 smoke：普通照明、高危过度制冷安全故障、中等能耗冲突；覆盖 single、planner-only、+safety、+critic、+feedback、full 六组。新增 `backend/tests/test_role_ablation_experiment.py`，验证 18 条记录、high fault 由 safety 分支修订、medium conflict 由 critic 分支修订、summary 保留 component-level boundary。同步更新 `docs/master_thesis_experiment_roadmap.md`、`docs/thesis_argument_chain.md`、`data/research/thesis_claims.json` 和 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_role_ablation_experiment.py` 3/3 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_role_ablation_experiment.py backend\tests\test_role_ablation_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_role_ablation_experiment.py` 生成 `data/results/role_ablation/20260901_024409/`，`group_count=6`、`task_count=3`、`record_count=18`。结果：`plus_safety` 在 high_safety_fault 将安全分数从 20 提升到 100，`plus_critic` 在 medium_energy_conflict 将安全分数从 60 提升到 100，`full` 同时覆盖两类修订，ordinary_lighting 无角色差异，`plus_feedback` 在本 smoke 中 `feedback_correction_rate=0.0`。Research implication: RQ3 现在能更细地说明“哪个角色在何种构造故障下实际改变动作”，并避免把所有多智能体分支写成无条件贡献。Research boundary: 这是组件级 frozen-plan 软件消融，不是完整 TaskRunner 端到端 episode benchmark，不测真实模型语义、真实设备、真实家庭安全、时延容量或住户效果。Remaining risk: D4 full 仍需扩展为 6 groups x 200 tasks x 3 repeats，并加入 final-state success、latency、side-effect、recovery success 和普通任务副作用；+feedback 的有效贡献需要 D5 纵向反馈实验或更合适的触发夹具验证。 |
+
+| 2026-09-01 | Completed (RQ3 15-category safety taxonomy smoke) | D3/E3 仍停留在 3 个端到端命名故障机制，无法支撑“更深的安全故障覆盖”这一硕士论文实验量要求；现有表格要求至少 15 类 smart-home anomaly/fault taxonomy，但仓库没有独立 taxonomy 文件、smoke runner 或产物。 | 新增 `data/research/safety_fault_taxonomy.json`，定义 15 类软件仿真安全故障/异常 fixture，覆盖 `airflow_health_constraint`、`thermal_health_constraint` 和 `energy_conflict`。新增 `scripts/run_safety_fault_taxonomy_experiment.py`，直接比较 `no_review` 与 `safety_review` 对候选动作的检测、阻断、剩余问题和 severity score；新增 `backend/tests/test_safety_fault_taxonomy_experiment.py`，验证 15 类唯一性、高危故障被 safety review 阻断、medium energy conflict 只检测不阻断。同步更新 `docs/master_thesis_experiment_roadmap.md`、`docs/thesis_argument_chain.md`、`data/research/thesis_claims.json` 和 `scripts/validate_thesis_claims.py`。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_safety_fault_taxonomy_experiment.py` 3/3 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_safety_fault_taxonomy_experiment.py backend\tests\test_safety_fault_taxonomy_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_safety_fault_taxonomy_experiment.py` 生成 `data/results/safety_faults/20260901_023745/`，`category_count=15`、`record_count=30`。结果：`no_review` detection_rate=1.0、block_rate=0、mean_safety_score=28.0；`safety_review` detection_rate=1.0、block_rate=0.8、mean_safety_score=92.0；按严重度分组，12 个 high fault 全部检测并阻断，3 个 medium energy conflict 全部检测但不阻断。Research implication: RQ3 的安全故障覆盖从 3 个端到端命名机制扩展到 15 类可复核 taxonomy smoke，为后续 3600-run full benchmark 提供稳定夹具和直接 SafetyAgent 基线。Research boundary: 本轮 smoke 直接测软件 `SafetyAgent` 对候选动作的规则化处理，不是完整端到端多智能体 benchmark，也不代表真实家庭故障分布、真实设备安全、传感器故障率、网络故障或住户安全。Remaining risk: E3 full benchmark 仍需将 15 类 taxonomy 扩展为每类 20 个 unique tasks、4 methods、3 repeats，并加入 critic/full 角色、误伤率和 recovery success；若把 taxonomy 作为论文主结果，需要在方法章节预注册类别来源和纳排边界。 |
+
+| 2026-09-01 | Completed (RQ1 pressure-matrix runner and full artifact) | D2/E2 已有规格但 runner 仍只能执行 guarded/unguarded 窄实验，无法产生硕士论文需要的 policy x delay x event rate x fault rate 压力矩阵；缺少 `global_lock` 与 `optimistic_replan` 对照，也没有 smoke/full 分层运行方式。 | 扩展 `scripts/run_snapshot_commit_experiment.py`：保留默认 `snapshot_commit_ablation_v1` 行为，新增 `--matrix smoke|full`；smoke 覆盖 24 traces，full 覆盖 4800 traces；新增 `snapshot_commit_pressure_matrix_v1` 报告、CSV/Markdown 渲染、虚拟 `planner_delay_ms`、确定性 `event_rate`/`fault_rate`、`replan_count` 和 `replan_success_rate`。新增 `backend/tests/test_snapshot_commit_experiment.py` 回归，验证旧默认契约不变且 smoke matrix 中 `unguarded` 会过期提交、`optimistic` 会拒绝过期提交。同步更新 `docs/master_thesis_experiment_roadmap.md`、`docs/thesis_argument_chain.md` 和 `data/research/thesis_claims.json` 的 RQ1 证据边界；`scripts/validate_thesis_claims.py` 增加新的 RQ1 pressure-matrix evidence status 白名单。 | Evidence: `backend\.venv\Scripts\python.exe -m pytest backend\tests\test_snapshot_commit_experiment.py backend\tests\test_thesis_claims.py` 6/6 通过；`backend\.venv\Scripts\python.exe -m ruff check scripts\run_snapshot_commit_experiment.py scripts\validate_thesis_claims.py backend\tests\test_snapshot_commit_experiment.py` 通过；`backend\.venv\Scripts\python.exe scripts\run_snapshot_commit_experiment.py --matrix smoke` 生成 `data/results/snapshot_commit/20260901_023046/`，`record_count=24`；`backend\.venv\Scripts\python.exe scripts\run_snapshot_commit_experiment.py --matrix full` 生成 `data/results/snapshot_commit/20260901_023151/`，`record_count=4800`；`scripts/validate_thesis_claims.py --require-generated-evidence` 返回 `structurally_valid=true` 且仍仅阻塞 RQ5；`scripts/evaluate_rag.py --min-recall 1.0` 返回 Recall@3 6/6。代表单元 event_rate=1.0、fault_rate=0、delay=0：`unguarded` stale_committed_rate=1.0，`optimistic` stale_committed_rate=0，`optimistic_replan` stale_committed_rate=0 且 replan_success_rate=1.0，`global_lock` valid_commit_rate=1.0。Research implication: RQ1 从单一构造交错扩展为可复现压力矩阵，能支撑“异步状态安全提交机制在多种虚拟规划窗口、事件概率和工具故障条件下的描述性稳健性”这一软件仿真结论。Research boundary: `planner_delay_ms` 是虚拟记录变量，runner 不真实 sleep，也不测量真实 LLM 推理时延；`fault_rate` 是隔离软件故障注入，不代表真实网络或设备故障分布；该结果不证明硬实时、presence 事件现场响应或实体设备安全。Remaining risk: full matrix 产物尚未签名，也未纳入独立复验；若后续要把 `global_lock`、`optimistic_replan` 作为论文主对照，需要在方法章节预注册其语义并避免把虚拟 delay 写成真实性能。 |
+
+| 2026-09-01 | Completed (RQ1 pressure-matrix specification) | D2/E2 的 RQ1 压力矩阵在路线图中只有高层想法：比较 policy、delay、event rate 和 fault rate，但缺少 smoke/full 取值、记录字段、schema、旧行为兼容和回归验收标准；若直接修改 runner，容易把研究设计、实现和结果解释混在一起。 | 在 `docs/master_thesis_experiment_roadmap.md` 增加 “D2/E2 RQ1 压力矩阵规格”，明确 smoke 与 full 矩阵、`policy` 定义、虚拟 `planner_delay_ms`、`event_rate`、`fault_rate`、trace/seed 记录、`--matrix smoke|full` CLI、`snapshot_commit_pressure_matrix_v1` schema、核心指标和回归要求；同时把 D2/E2 状态更新为规格完成、待实现与运行。未修改 `scripts/run_snapshot_commit_experiment.py`、生产 `snapshot_commit.py` 或任何实验结果。 | Evidence: 已复核 `AGENTS.md`、`.agents/skills/smart-home-thesis-qa-loop/SKILL.md`、`docs/improvement_backlog.md`、`docs/master_thesis_experiment_roadmap.md`、`scripts/run_snapshot_commit_experiment.py`、`backend/tests/test_snapshot_commit_experiment.py` 与 `backend/app/runtime/snapshot_commit.py`；现有 runner 仍是 guarded/unguarded 窄实验，生产默认仍为 guarded；`rg "D2/E2 RQ1 压力矩阵规格" docs` 可定位规格；`git diff --check` 通过；`scripts/validate_thesis_claims.py --require-generated-evidence` 返回 `structurally_valid=true` 且仍仅阻塞 RQ5；`scripts/evaluate_rag.py --min-recall 1.0` 返回 Recall@3 6/6。Research implication: RQ1 下一步实现有了可测试的最小规格，可先跑 24 trace smoke，再扩大到约 4800 trace full matrix，降低硕士论文实验深度扩展时的设计漂移。Research boundary: 本轮只完成实验规格，不产生新的压力矩阵结果，不能把 D2/E2 写成已验证。Remaining risk: `global_lock` 与 `optimistic_replan` 的具体模拟语义、fault 注入机制和 full matrix 是否纳入论文主结果仍需要实现后用回归与产物验证；若改变论文假设或主指标，仍需用户研究设计确认。 |
+
+| 2026-09-01 | Completed (master thesis experiment roadmap tables) | 两个持续化表格“现有问题与深入方案”和“推荐的硕士论文实验包”原本只存在于对话与自动任务 prompt 中，仓库缺少可版本化、可检索、可被后续 heartbeat 每轮更新的源文件；这会导致后续自动推进无法可靠判断哪些问题已解决、哪些仍需用户研究设计确认或外部证据。 | 新增 `docs/master_thesis_experiment_roadmap.md`，把现有问题、深入方向、前沿方法参照、解决办法、验收标准、证据路径、边界，以及 E0-E6 实验包的样本量、对照组、指标、统计方法、运行产物和不可越界结论集中到两个表格；未改变实验夹具、runner、指标计算或论文主张矩阵。 | Evidence: 预检 `git status --short` 已记录既有未提交修改并未回退；`AGENTS.md` 与 `.agents/skills/smart-home-thesis-qa-loop/SKILL.md` 已复核；`docs/thesis_argument_chain.md` 与 `data/research/thesis_claims.json` 已作为事实源；新增表格文档可由 `rg "硕士论文实验深度持续推进表" docs` 定位；`scripts/validate_thesis_claims.py --require-generated-evidence` 返回 `structurally_valid=true`、`blocking_rq_ids=[RQ5]`；`scripts/evaluate_rag.py --min-recall 1.0` 返回 Recall@3 6/6。Research implication: 后续每小时持续任务有了稳定的论文实验路线图和状态表，可按单项证据闭环推进硕士论文实验深度，而不是在对话中漂移。Research boundary: 本轮是研究治理与文档追踪修复，不新增任何软件实验结果、真实模型指标、人工标注或现场证据。Remaining risk: D1 的论文主线收敛、D2-D7 的实验扩展和 D8 的外部人工审查仍未完成；涉及 fixtures、controls、metrics、hypotheses 或解释政策的改动仍需用户确认。 |
+
+| 2026-08-26 | Completed (Graph Harness demo panel) | 版本化 `multi_agent_workflow_v1` 与 `trace_validation` 已可由后端返回，但原界面只能查看原始 JSON 或 A2A 风格消息；演示者无法在一次命令后直观看出声明图、实际走过的节点和软件证据边界。 | 在 `AgentOutputPanel` 新增 `Graph Harness` 标签：读取黑板中的图版本、节点和 trace 校验，只对实际返回的阶段标记完成，并明确展示“本次软件 trace”边界；未改变 `TaskRunner`、API、智能体策略、实验夹具或指标。 | Evidence: 新增 Vitest 图展示回归与既有反思降级测试 2/2 通过；`npm run build` 通过；文档检索门禁 Recall@3 6/6=1.0；`git diff --check` 通过。浏览器实测未完成：当前 localhost 连接被关闭，未启动或修改部署来伪造截图。 | Research implication: 演示界面可将中心化图约束 Harness 的可观察执行路径与机器校验结果呈现给用户，便于说明系统结构和单次运行的可追溯性。 | Research boundary: 该视图只呈现本地软件仿真的返回 trace，不验证智能体贡献、模型语义正确性、真实设备安全、现场体验或去中心化协商。 | Remaining risk: 需在可用的本地 Docker/服务环境中执行一次端到端浏览器命令和截图；内部批评修订与最多 3 轮反馈校正仍是折叠的 `TaskRunner` 控制逻辑，而非独立可恢复图事件。 |
+
+| 2026-08-26 | Completed (explicit multi-agent workflow graph contract) | 多智能体控制链已具备固定阶段、共享黑板、条件审查与有界校正，但这些关系仅隐含在 `TaskRunner` 的命令式代码中；一次运行无法以版本化图契约验证是否发生未知角色、跳过阶段或未声明的相邻转换。 | 新增无第三方依赖的 `multi_agent_workflow_v1`：声明当前可观察节点及允许有向边，黑板在成功命令中附带图版本、拓扑和 `trace_validation`；保留 `TaskRunner`、API、智能体行为、实验夹具和指标不变。 | Evidence: 新增图契约单元测试、真实 mock `TaskRunner` 集成测试及协作/个性化回归共 37/37 pytest 通过；针对性 Ruff 通过；文档更新后 `scripts/evaluate_rag.py --min-recall 1.0` 返回 Recall@3 6/6=1.0。 | Research implication: 当前中心编排的软件仿真可产出可机读的阶段图和 trace 合法性证据，便于后续检查节点/边/路由变更与复现实验。 | Research boundary: 图 trace 只证明本地软件中可观察阶段的顺序符合声明；不证明多智能体优于基线、角色贡献、模型能力、去中心化协商、真实设备安全或现场效果。 | Remaining risk: 批评修订和最多 3 轮反馈校正仍在 `TaskRunner` 内部折叠执行，未作为独立异步图事件；若要把它们变为可恢复、可断点续跑的图执行，需要在不改变研究协议的前提下补充节点级状态 schema、循环事件和行为等价回归。 |
 
 | 2026-07-16 | Completed (fresh-reader claim-alignment pass) | 陌生读者只读复核确认 RQ1、RQ3、RQ5 核心数值与 JSON/Markdown 产物一致，但发现论证链存在可误读表述：RQ1 把构造状态变化时延混同于高优先级/presence 响应；RQ2 将 `multi_agent_static` 写成直接效应基线，而报告实际计算 `personalized - single_agent`；RQ5 在“216 条记录”后直接列主重复准确率，且“成功”未限定为 runtime success；“唯一投稿阻塞”也未区分外部研究证据与最终签名打包门禁。 | 收窄 RQ1 问题和指标为过期提交、有效提交、构造状态变化到结果时延及门禁开销；明确该时延不代表真实高优先级事件。将 RQ2 直接比较写为 `personalized - single_agent`，把 static 组降为诊断组。明确 RQ5 的覆盖率/准确率只取主重复每组 n=36，三次重复用于稳定性，216 条仅为运行成功记录。将人工审查定义为唯一未闭合的外部研究证据，并把裁决后重算、冻结、签名和独立复验定义为投稿打包门禁。 | Evidence: 陌生读者核对 400 条 RQ1 cell 设计、126 条 RQ3 记录、216 条 RQ5 记录、task-suite SHA 与 review manifest，未发现数值错误；修改后 thesis validator 返回 `structurally_valid=true`、0 issue/warning、仅 `blocking_rq_ids=[RQ5]`，相关 pytest 6/6 通过，RAG Recall@3 6/6。Research implication: 论文现在明确区分机制时延与事件响应、直接效应与诊断组、运行成功与语义成功、主重复性能与重复稳定性，可降低答辩或审稿中因分母和构念错位导致的结论失效。Research boundary: 这些是主张对齐修复，不新增高优先级事件实验、RQ2 因果识别或人工标签有效性。Remaining risk: 两名独立标注者、第三方裁决、基于裁决标签重算 RQ5，以及最终冻结签名仍需真实外部人员和投稿阶段完成。 |
 
@@ -132,3 +175,225 @@
 | 2026-07-10 | 完成 | 个性化消融 CSV 仅对 `personalized` 方法写入效用和满意度；`single_agent` 与 `multi_agent_static` 的同列为空，导致多目标结果无法进行方法间比较。 | 将规划时的偏好注入与结局评估解耦：所有方法均使用同一固定偏好剖面和权重评分，只有个性化控制器在规划阶段获得该剖面；指标名称改为 `profile_weighted_multi_objective_v1`，避免把评估器误称为控制器。 | `test_static_controller_can_use_a_fixed_profile_for_outcome_evaluation` 与消融脚本契约测试确保三种方法均生成数值效用/满意度，并将统一评估规则写入 `ablation_protocol.json`。因此，方法差异可以归因于控制逻辑而非指标缺失或不一致的偏好权重。 |
 | 2026-07-10 | 完成 | 个性化消融在每个 method/condition/seed 内复用同一个 `SmartHomeEnvironment` 和 `TaskRunner`。前一任务的设备状态、时间步和上下文记忆会进入后一任务；而鲁棒性噪声依赖时间步，控制器动作数不同会令宣称“同 seed 配对”的扰动流实际不一致。 | 为每个 task 创建新的确定性环境和 `TaskRunner`，以隔离设备状态与上下文；用 `SHA-256(experiment_seed, task_id)` 派生并记录 `disturbance_seed`，同时写入 `task_id`、`initial_time_step=0` 和 `initial_state_fingerprint`。协议明确比较必须在 condition、实验 seed 和 task_id 均一致时进行。 | `backend/tests/test_personalization_experiment_protocol.py` 验证 task seed 稳定且任务间不同，三种控制器对同 task 使用同一扰动 seed，并验证每条记录从 time step 0 与相同初态指纹开始。这样任务级指标可归因于控制器，而不受前序任务轨迹或隐藏随机流影响；该仿真结论仍限于记录的固定任务集与扰动模型。 |
 | 2026-07-10 | 完成 | 个性化消融仅输出原始 CSV；即使实验设计已按 condition/seed/task 配对，仍没有按配对单位聚合或报告不确定性，容易把少量固定任务上的均值差异误读为稳定方法优势。 | 生成 `ablation_summary.json` 和 `ablation_summary.md`：对每个候选控制器与 `single_agent`，严格检查 condition、seed、task、扰动流与初态指纹完全配对后，报告候选减基线的均值效应及固定随机种子的 2,000 次配对非参数 bootstrap 95% 区间；协议和报告明确这不是显著性检验。 | `test_paired_summary_reports_reproducible_effects_and_intervals` 验证汇总与区间逐次一致，`test_paired_summary_rejects_initial_state_mismatch` 拒绝失配记录；完整实验同时保存机器可读与 Markdown 报告。结果只能描述这组已记录仿真任务内的不确定性，不能推断真实住户、真实设备或总体显著性。 |
+
+
+## 2026-10-17 显式设备约束修复与新验证
+
+Problem: 接手中断工作，已证实制热指令误生成cool；复合否定被整句屏蔽，区间目标缺少保持。原红灯日志保留在 output/five-stage-20261017-preexisting/explicit-red.txt。
+Minimum fix: 沿用本轮已有explicit_device_control_v2修改：按子句处理否定，保留模式与区间，拒绝禁止模式/越界/倒置区间，空调通过turn_on同时提交模式与温度。单设备族确定性适配器不代表通用自然语言理解。
+Verification evidence: 本次重新运行 test_explicit_control.py、test_semantic_targets.py、test_e1_episode_benchmark.py：57 passed；explicit_control.py与test_explicit_control.py Ruff通过。新E1 smoke为96条，四组runtime均100%，开发者状态契约通过率single/static/personalized/full=79.17%/87.5%/100%/100%；产物 data/results/e1_task_benchmark/20261017_153220_182395/。localhost:80的/health和/api/agent/health均连接拒绝，当前无新服务/API/页面验证。
+Research implication: 限定软件路径的显式设备约束保持已有针对性回归和TaskRunner smoke证据。
+Research boundary: 新产物全部mock，不是完整7200矩阵复跑；不同版本和规模不能作因果改善对比。单设备族与已覆盖子句形式不证明任意复合语句支持；区间中点是确定性执行策略，不是学习/优化结果。
+Residual risk: 独立语义评审、真实模型复测、未覆盖语言形式、统一仿真时钟与全控制能耗、真实设备验证仍未完成；RQ5保持阻塞。
+
+
+## 2026-10-17 第二轮：无标点指令与独立积分核算
+
+Problem: 新增无标点复合否定3例修复前全部失败，亮度40%被吞掉或冲突错误成功。另以现有模拟器复现：一个控制批次温度26.00变25.39但时钟/能耗不变；一次30分钟与30次1分钟产生不同状态与能耗。
+Minimum fix: explicit_control仅在把/将+亮度/温度/速度/开度的明确边界补充分句。新增IntegratedSmartHomeEnvironment为opt-in动作/步进核算模式，原环境保持历史行为；默认成功批次5分钟，分钟终点功率积分，零时长不推进，部分成功批次计一次时长。新增诊断runner冻结初态、配置及源码哈希。
+Verification evidence: 无标点测试先3 failed后通过；定向60 passed，积分环境7 passed；最终全后端251 passed，相关Ruff通过。当前代码（添加积分模块之前）的E1 full已运行7200 mock records，目录data/results/e1_task_benchmark/20261017_153640_135596/；原始配对1800组与summary重算无异常，四组runtime均1，状态契约通过率single/static/personalized/full=77.5%/90%/100%/100%。独立积分诊断data/results/integrated_accounting/20261017_154016_540080/有6条记录，固定总30分钟、重复批次终态一致、正能耗三项检查均通过。
+Research implication: 明确参数子句不再因缺标点被整段忽略；动作与观察的时间/能耗核算有可单独启用的版本，能做一致性诊断。
+Research boundary: 新E1 full仍使用legacy核算，不是integrated模式；新增积分模式只验证设备动作与step路径，不能宣称所有环境变更API已统一。6条是确定性核算诊断，无LLM调用、无方法优越性或节能结论；每分钟终点功率矩形积分和累计kWh的5位舍入仍是数值近似。仿真模型未现场标定，历史/新full不可直接作修复因果比较。
+Residual risk: 无标点解析只覆盖声明边界，其余混合否定/多房间多设备族尚未充分验证；积分模式尚未接入新版E1。RQ5人工审查、真实模型复测与照明原始数据核验未完成。127.0.0.1:11434/api/tags及8000/health拒连；localhost/health超时，无本次在线服务或浏览器证据。
+
+只读审计补充：积分诊断13个源码/配置哈希与当前文件一致；未发现阻止本轮交付的具体缺陷。分步等价和固定总时域仅在refresh_realtime=False下验证，默认实时刷新路径未验证；不能泛称所有环境API的时钟/能耗已统一。
+
+
+## 2026-10-18 新积分协议E1完整矩阵与论文初稿
+
+Problem: opt-in积分环境原先只完成6条核算诊断，尚未进入完整TaskRunner方法比较。
+Minimum fix: run_episode新增默认legacy不变的accounting_mode路径；integrated_total_30m_v1在相同冻结初态上计入控制阶段，余时观察补足30分钟；旧utility/post_control_horizon_kwh置null；新增独立runner、配对校验与冻结源码包。
+Verification evidence: 先5个新测试失败，接口接入后通过；最终257后端测试通过，相关Ruff通过。新smoke96条目录data/results/integrated_e1/20261017_154839_166050/；新full7200条目录data/results/integrated_e1/20261017_154901_058487/。独立审计逐条核验7200记录/trace、1800配对完整初态一致、所有总时间及control+post=30、whole_episode能耗等于after-before最大误差0、summary均值一致、80源文件及冻结spec/tasks哈希匹配。225条含独立legacy环境中的脚本训练，评价初态未污染。
+Research implication: 新协议能够在固定总30分钟软件时域中比较动作与观察；四组状态契约通过率77.5%/90%/100%/100%。全记录平均能耗为0.188086/0.186976/0.187512/0.187512 kWh，舒适代理95.124/95.097/94.969/94.969。按24基础场景等权事后描述性分析，full相对single契约差22.92pp；能耗差区间跨零，不作显著性或全面节能结论。
+Research boundary: mock、开发者标签和状态谓词、未现场标定；准备及独立训练在评价时域外；分钟终点功率+5位累计舍入为近似。无真实模型或物理实验新证据。dependency_source_sha256指基础manifest，新增runner有独立SHA和源码快照，不将其称为最终80文件整体哈希。
+Residual risk: 独立人工语义评审、真实模型留出任务复测、照明原始数据核验未完成；六章工作初稿已建立但正文规模和格式检查仍进行中。
+
+
+## 2026-10-18 时间离散敏感性证据同步
+
+Problem: 已生成并写入论文的时间步诊断尚未同步进实验账本。
+Minimum fix: 登记现有冻结产物，不修改任务、指标、控制方法或解释政策。
+Verification evidence: data/results/time_discretization/20261017_160838_122257/summary.json：9场景、4步长、36记录，全部总时域30分钟；步长1/2/5/30分钟。相对一分钟参考，平均绝对能耗差0/0.000456667/0.001623333/0.009814444 kWh，平均绝对终温差0/0.031111/0.043333/0.206667℃。
+Research implication: 时间离散是必须冻结的数值实验条件，与控制方法比较分开解释。
+Research boundary: 合成软件诊断、无LLM调用；一分钟仅为数值参考，不是物理真值，不增加真实模型或现场证据。
+Residual risk: 真实功率及热湿标定、独立语义审查仍未完成；RQ5保持开放。
+
+
+## 2026-10-26 本地 DeepSeek QLoRA：准备完成、完整训练已启动
+
+Problem: 用户希望仅用本机微调同时输出规划、简短解释和工具调用的小模型；当前接口仅使用Qwen语义解析，未具备可追溯训练链路。
+Minimum fix: 新增独立 tools/local_finetune/，不改生产模型配置；固定DeepSeek-R1-Distill-Qwen-7B revision 916b56a44061fd5cd7d6a8fb632557ed4f724f60，建立Python3.12/CUDA12.6/NF4环境、规则合成数据、assistant-only loss训练与配对推理评测。只读审计发现dataset-v1温度标签与模拟器开机副作用冲突，已修正；v1至v4保留为被拒绝或被替代候选，当前使用dataset-v5。
+Verification evidence: 40个针对性pytest通过，相关Ruff通过。GPU NF4实际前后向通过；两片官方权重均通过LFS SHA-256。dataset-v5为2000/200/200样本、每组24类，变化状态及条件分支均有覆盖；2400条审计、2729调用全部被模拟器接受，未请求设备不变；完整规范化指令与kind×room组合不跨split。真实tokenizer的20样例回答掩码与prompt还原通过（初始v3现场检查）；v5完整tokenize审计最大train/validation长度1111/1110，上限2048。7B真实GPU两步pilot训练7.5469秒，峰值allocated显存11826972160 bytes；adapter已保存，8条验证loss计算完成。完整训练与200条配对评测流程已启动，状态 output/local-finetune/run-20261026-v1/status.json；此处不记录为完成。RAG Recall@3=6/6；localhost/health=200，/api/agent/health本次5秒超时，未获取新的浏览器证据。
+Research implication: 具备本机运行7B QLoRA的实际试训证据与可追溯训练/评测入口；不再仅有微调计划。
+Research boundary: synthetic_rule_v1、human_reviewed=false；kind×room组合留出共享模板，同一split可有相同指令配不同状态。2步pilot只证明训练路径，loss不证明模型改善。尚无完整训练完成、配对推理收益、解释语义、端到端安全或真实设备结论；未替换现有Qwen配置，RQ5独立审查未闭合。
+Residual risk: 完整任务仍运行；持续状态以status.json和training/progress.json为准，完成后需补录实际评测及失败项。全流程失败会保留phase日志和failed状态，不自动切换生产模型。
+
+
+## 2026-10-26 模型训练工程独立打包与断点迁移
+
+Problem: 用户要求模型训练从前后端仿真工程分离，在P盘建立独立工程。
+Minimum fix: 创建P:/smart-home-model-training/，包含src/local_finetune、data、models、runs、独立.venv、PowerShell入口和最小compatibility/simulator接口快照。复制而非删除原文件，消除运行时对原项目路径的依赖。新增resume参数，核对数据SHA、模型revision和关键超参数后加载checkpoint中的adapter、optimizer、scheduler、RNG。
+Verification evidence: 新工程41个pytest通过，Ruff通过；2400条数据、2729调用审计通过；9个复制后的模型文件SHA-256全部匹配。旧进程在63步停止，最近完整checkpoint-60和原run已复制并记录hash；新工程已实测恢复到61/250步。原第61-63步未落盘进度重算，原日志保留。新任务状态P:/smart-home-model-training/runs/resumed-20261026-v1/status.json，优化进度training/progress.json；原任务status标记migrated。
+Research implication: 训练工程独立于前后端应用，固定数据、模型和关键超参数的续训有可追溯checkpoint来源。
+Research boundary: 训练仍进行中；不新增模型收益、解释质量或真实设备安全结论。历史快照保留原绝对路径是来源记录，不代表新运行依赖原工程。兼容接口快照不包含Web服务或UI。
+Residual risk: 完整训练和配对评测尚未完成，最终状态应读取新工程runs/current.json指向的任务；RQ5人工审查仍未闭合。
+
+
+## 2026-10-26 项目审查与瘦身（冗余隔离，未永久删除）
+
+Problem: 训练工程已独立，但原项目保留约41.88GB重复训练目录及约131MB可重建运行时下载/npm缓存，当前模型证据路径仍部分指向旧目录。
+Minimum fix: 先核验/补存118个文件的独立工程副本与SHA-256，再把23项冗余移出至P:/project-cleanup-quarantine-20261026/。批量递归永久删除被自动安全检查拒绝（blocked by policy，未提供详细原因），实际执行可恢复移动，不冒称永久删除或释放物理磁盘。新增模型交接及审查报告、Git缓存忽略与Docker上下文排除；更新当前claim证据路径，保留历史账本映射。
+Verification evidence: 原项目43,394,776,214 bytes降至验证时1,382,212,511 bytes；移出42,014,522,053 bytes，物理磁盘释放0。backend pytest 257 passed，Ruff通过；frontend 12 tests passed，生产构建与bundle gate通过（2D 216091 bytes；deferred 3D gzip 273756 bytes）。两健康接口无法连接，Docker engine不可用，未获取新浏览器证据。独立训练在隔离后继续运行。明细docs/cleanup_review_20261026.md、output/project-cleanup-audit-20261026/quarantine-results.json；隔离目录restore-manifest.json可定位恢复。
+Research implication: 应用工程与训练资源分离，当前训练证据有可用的新路径；本轮无研究方法或仿真语义变更。
+Research boundary: 保留data/results、data/logs、data/private_memory、业务源码及未提交修改、前后端依赖和已安装运行时。不把质量门禁或路径独立性解释为模型改善、在线部署正常或真实设备证据。
+Residual risk: 永久删除未完成，冗余仍占隔离目录的物理磁盘；在线服务本次未验证，完整模型训练与配对评测仍运行，RQ5人工审查未闭合。
+
+
+## 2026-10-26 EnergyPlus 单房间物理仿真部署
+
+Problem: 原数字孪生无法给出 EnergyPlus 建筑热平衡、运行时控制与按区间对账的设备电量证据；论文 D7/E5 的 external-validity 切片 smoke 不是建筑物理仿真桥接。
+Minimum fix: 保留原仿真器，新增官方 EnergyPlus 26.2.0 Windows 运行时、基于官方单区 IDF 的 5×4×3 m 单房间、Golden NREL TMY3 天气、Python Runtime callback、照明/温控/HVAC/通风/窗户 schedule actuator、FastAPI 隔离作业、懒加载 React 工作台、规则/手动/Harness mock 控制、DeepSeek 规划端点适配、灯具实测点拟合接口和等输入配对实验脚本。标准输出不再被宣称已做建筑或硬件校准。
+Verification evidence: 官方 ZIP SHA256 `15ab698803f459444ec3e97ee52ab9f99db93a583819c7821b17dfcd7b4461e7`；EnergyPlus 单日真实引擎运行 exit 0、0 severe、288 个样本，逐区间 electricity API/SQLite 差值 0 J；目标 backend pytest `test_energyplus_integration.py` 5 passed，Ruff 通过；生产 frontend build 通过，2D 初始 JS 217198 bytes、延迟 3D gzip 273756 bytes 均通过预算；本地 `/health` 为 ok，`/api/energyplus/status` 显示 EnergyPlus 26.2.0 available，真实 API 创建规则作业返回 completed/288 samples。最终neutral-start配对产物 `data/results/energyplus/comparisons/mock-harness-neutral-summer-20261026/comparison.json` 与 `real-deepseek-light-neutral-summer-20261026/comparison.json` 的模型/天气/初始指纹相同。Mock Harness 占用目标满足率 95.83% vs rule 90.0%，模拟用电 5.727 vs 2.699 kWh，CO2 超限 1031 ppm·min；78 个 mock 候选动作中28个因无已映射 actuator 被拒。真实 DeepSeek Harness 单日48次调用、平均推理2727 ms、48个开灯动作经映射；占用目标满足率0% vs rule90%，CO2超限2941.8 vs0 ppm·min，模拟用电4.974 vs2.699 kWh，展示方法没有满足整套环境目标，禁止优劣和节能结论。模型适配评测 `P:/smart-home-model-training/runs/resumed-20261026-v1/evaluation/summary.json` 对200条合成留出任务显示base/adapter JSON schema valid=0%/100%、exact ordered calls=0%/91%，均不等同语义审查。原照明实测文件名在本仓库 `data/output/docs` 和全仓检索中未发现。浏览器本地页面在 `http://127.0.0.1:5173/`。
+Research implication: D7/E5 从 synthetic slice adapter 进一步拥有真实 EnergyPlus software bridge、loopback UI/API 与一次真实微调模型驱动的控制候选闭环。当前结果同时暴露 mock action actuator 覆盖缺口和真实模型全局目标保持失败，可为后续指令级语义门禁提供反例。
+Research boundary: 建筑几何、Golden 天气、Ideal Loads 效率、占用与灯具经验映射均不是目标住宅测量/校准结果；自然采光是单个桌面参考点；CO2 不代表 PM2.5/VOC；控制器对照仅单种子单日描述性仿真；DeepSeek训练数据为合成且未经独立语义审查；用户请求的照度/功率实测数据未在仓库找到；没有实房、真实住户满意度、设备桥接或现场节能证据。
+Residual risk: 模型在单个温度设定指令上曾输出 `mode=off`，复合指令曾因 plan/call count mismatch 被 API拒绝；probe见 `data/results/energyplus/model_diagnostics/20261026.json`。mock/旧warmup初态比较保留作debug但已在 claim matrix 标记 superseded。冬季仅mock的一次早期对照不是当前neutral-start结果；需以修正后的控制起始状态重跑。当前 DeepSeek agent仅作候选规划且已有语义阶段仍是mock；用户灯具硬件实测数据未定位；多季节独立重复、BOPTEST/CASAS、真实设备、外部人工审查均未完成；Docker发布未做（本轮采用native loopback deployment）。RQ5独立人工审查仍阻塞。
+
+## 2026-10-27 EnergyPlus 全屋九热区接入与空间一致性修复
+
+Problem: EnergyPlus 仅映射 5×4×3m 示例客厅，与用户设计的九空间不符；显示房间矩形重叠，餐厅/走廊区域与主界面定位不一致；直接相加 EnergyPlus 房间 meter 会漏掉 Ideal Loads 系统电量。
+
+Minimum fix: 新作业默认 `whole_home`，以 `data/energyplus/home_layout.json` 统一九空间多边形、前端 2D/3D 地面与定位；依据墙线补齐边界、配对内部墙、餐厅/走廊采用 AirBoundary。一个 EnergyPlus 引擎运行九热区，各房间独立 schedule、变量和库存约束控制；仅四个已有空调房间设置 HVAC，不添加虚构设备。各外窗自然通风面积和朝向来自几何；固定开放通道换气显式记录。SQL 按房间基础电量+对应 Ideal Loads fuel energy 与 facility 逐区间核对；保留 raw callbacks。新增房间结果、时序选择、全屋/历史单区标识和空间模型下载。灯具测量仅作用于所选房间。保留 `single_room` 显式历史复现。
+
+Verification evidence: `backend/.venv/Scripts/python.exe -m pytest backend/tests/test_energyplus_whole_home.py backend/tests/test_energyplus_integration.py -q` 10 passed，覆盖全屋灯具 mock Harness、卧室动作隔离、非重叠分区和真实引擎两组房间控制；目标 Ruff 通过。前端 Vitest 14 passed，生产 build/bundle 通过，2D 初始 JS 217721 bytes，延迟3D gzip 273756 bytes。最终 summer/winter v2 各 rule/mock 单日配对，四次均9热区、288时间点、2592 room samples、0 severe、房间/全屋区间电量残差0 J，模型/天气/初态配对一致，实际真实模型调用0。产物为 `data/results/energyplus/comparisons/whole-home-summer-20261027-v2/comparison.json`、`whole-home-winter-20261027-v2/comparison.json`；旧无v2产物保留为开发记录。Edge真实页面创建作业 `7b41a7fc5bdc48ae8cb538ad35b3905a` 成功，九行房间结果、卧室/厨房时序切换、390px无横向溢出、0 page errors；截图与记录 `output/energyplus-whole-home-panel.png`、`output/energyplus-whole-home-mobile.png`、`output/energyplus-whole-home-browser.json`。本地 `/health` ok；`/api/agent/health` 如实为 mock 未做真实连通验证；EnergyPlus状态 available、room_count=9。RAG Recall@3=6/6，claim validator structurally_valid=true/submission_ready=false（RQ5），`git diff --check` 通过。
+
+Research implication: 可主张设计户型九空间的同引擎物理软件桥接、分区控制/观测和模拟电量一致性；不再以示例客厅冒充全屋。只读 research_claim_critic 发现并促成修复全屋护栏数组漏记及固定单窗自然通风参数；v2报告已正确记录夏冬mock各1次CO₂护栏干预，最终有界复核 supportable。已同步 roadmap、thesis_claims、argument_chain 和实验指南。
+
+Research boundary: 97.53m²源于设计墙线，3m层高、未测材料/围护结构、参考气候、1.5m窗高、18°C默认地面温度、封闭阳台、固定0.05m³/s通道换气、单房间08:00–18:00两人占用和灯具/设备参数均为未校准假设；其他房间无人时目标满足率为null。窗帘无物理映射，餐厅/走廊无对应外窗，相关动作拒绝；风扇映射换气，不是人体风速。普通生活模拟仍使用原模拟器，EnergyPlus为独立全屋物理实验工作台。未验证真实DeepSeek全屋效果或全部设备，不宣称实际节能/安全/住户满意度。
+
+Residual risk: 两季各一次不构成独立重复；真实模型端点本轮未就绪；实测建筑/设备校准、住户移动/门状态/气流网络、窗帘映射、独立人工语义审查与现场验证仍待完成。既有未提交修改保留，无提交/推送/部署或数据删除。
+
+## 2026-10-27 全应用信息架构与界面重设计
+
+Problem: 用户明确表示整个应用“很乱看不懂”。旧导航只是长页面锚点，住宅空间、设备表单、后台自治、助手技术轨迹和EnergyPlus实验同时堆叠；生活模拟与物理实验数据来源难以区分，运行前显示零收益也容易误读。
+
+Minimum fix: 新增 `WorkspaceNavigation.tsx`，拆为住宅总览、设备控制、家庭助手、自动运行、物理实验、状态与趋势六个独立可见页面，支持hash深链接和浏览器前进/后退。首页聚焦户型与房间摘要，设备选择不再依赖占用房间；页面切换保留草稿。助手主流程简化为四步，完整协作/JSON详情折叠保留。EnergyPlus拆为新建实验、实验结果、空间与假设，创建后转到结果，下载/校准/高级参数按需展开。生活模拟无结果时显示空状态，mock模式用中文解释推演不可用原因。新样式统一钴蓝操作、雾蓝灰画布、白色内容区，并修复手机导航隐藏、按钮对比度、设备行换行与重复状态消息。没有改变后端控制、物理模型或实验指标计算。
+
+Verification evidence: 前端Vitest 15 passed；TypeScript/Vite build与 `npm run test:bundle` 通过，默认2D初始JS 220672 bytes、延迟3D gzip 273756 bytes。Playwright 12/12通过，涵盖页面隔离/草稿/后退、手动控制、2D/3D、人员位置同步与失败回滚、断网提示、中心编排轨迹、私有属性保存和后台自治启停、真实EnergyPlus全屋运行/九行结果/房间时序/summary下载。Microsoft Edge桌面1440×1000与手机390×844六页面截图为 `output/ui-workspace-<page>-desktop.png` / `-mobile.png`，记录 `output/ui-workspace-browser.json`，0 page errors；六页面手机无横向溢出、WCAG A/AA自动检查通过。本地8000 `/health` ok，`/api/agent/health`明确mock未做真实连通验证。RAG和diff门禁见本轮最终执行结果。导航说明 `docs/ui_workspace_guide.md`。
+
+Research implication: 界面按用户任务分层，并显式区分生活模拟与EnergyPlus结果来源，便于演示与审计；仍保留完整可追溯详情。
+
+Research boundary: 属于信息架构、视觉和交互改动；自动检查与截图不证明真实用户理解速度、审美满意度、模型效果或现场设备行为。浏览器助手验证使用mock；EnergyPlus调用真实软件引擎，不是实体设备验证。
+
+Residual risk: 仍需用户本人审阅新版视觉与操作顺序；长结果表、历史记录和完整审计JSON依然需要在各自详情中滚动。已有未提交工作保留，未提交、推送或部署。
+
+## 2026-10-27 首页状态卡片遮挡修复
+
+Problem: 用户截图显示首页房间/温度/照度/功率数值被旧装饰图标遮挡，标签与数值空间不足；新版沿用 `.home-vitals` 导致旧主题伪元素和布局规则残留。
+Minimum fix: 将首页状态区域改用独立 `.overview-metrics` 类，隔离旧主题；卡片明确最小高度、标签行高、数值行高与间距，移除残留图标影响，提高标签/数值字号。
+Verification evidence: Edge真实页面在2048/1440/1024/390px下检查所有标签和数值的DOM边界均位于卡片内，伪元素content=none；截图 `output/ui-metrics-fixed-1440.png` 等。新增Playwright“首页状态卡片在桌面和手机均完整容纳标签与数值”1 passed，前端TypeScript/Vite build通过；`git diff --check`通过。
+Research implication: 修复首页显示可读性；不改变环境数据或指标。
+Research boundary: 浏览器布局检查与截图不等同正式用户可用性研究。
+Residual risk: 系统字体与用户缩放仍可能影响排版；已覆盖常见桌面/手机宽度。既有未提交修改保留。
+
+## 2026-10-27 六页面复查：窄屏溢出与首次房间选择竞态
+
+Problem: 六页面×320/390/768/1024/1440/2048px的36组真实浏览器检查发现320px均因旧html最小宽度360px而溢出；全套E2E复查另外复现首次状态尚未加载时点击房间被初始状态覆盖，导致位置同步/失败回滚测试间歇失败。
+Minimum fix: 将html最小宽度与移动端设计一致设为320px；HomePlan2D在初始presence hydration完成前声明aria-disabled、禁止鼠标/键盘选择，完成后恢复交互，避免接受随后被覆盖的操作。
+Verification evidence: 新增受控延迟/api/state的Playwright回归，证明加载期间点击不会改变位置、加载后卫生间选择可同步；状态卡片边界回归补充320px。全套Playwright14/14通过；六页面36组复测均无横向溢出，记录 `output/ui-layout-audit-final.json`；首轮文字裁切检测无额外发现，截图 `output/ui-audit-<page>-390.png` / `-1024.png`。Vitest15通过，TypeScript/Vite与bundle门禁通过。健康接口保持ok，agent health如实为mock未做真实连通验证。
+Research implication: 修复加载期交互一致性与窄屏可读性，不改变模拟器、实验fixtures或指标。
+Research boundary: 软件UI回归和截图检查，不代表真实模型/设备、正式可用性或用户审美认可。
+Residual risk: 未穷尽所有系统字体与浏览器缩放；保留全部既有未提交工作。
+
+## 2026-10-27 人物移动代码审计与户型约束修复
+
+Problem: 旧clampToHome仍限制旧矩形，允许走出设计户型；getRoomAtPosition把任何屋外点默认为corridor；isEditableTarget把普通按钮视作文本输入，视角/复位按钮保有焦点时WASD失效；键盘移动未检查初始位置hydration。
+Minimum fix: 新增 `frontend/src/data/homeMovement.ts`，按共享空间多边形判定房间，屋外返回null；移动使用路径采样与真实墙线/墙厚的swept交叉检查，门洞与开放通道保留通行。App删除旧矩形边界与屋外走廊fallback，键盘加载期禁用，普通按钮不阻断WASD，输入框/选择框仍不拦截文字。
+Verification evidence: Vitest17/17通过，覆盖屋外坐标、持续加速向外、实体墙阻挡与门洞/客餐通道通行；Playwright15/15通过，新浏览器用例实际点击复位后WASD、连续加速至外墙、碰内部隔墙，再从门洞进入卧室并检查后端确认状态。TypeScript/Vite和bundle通过，2D初始JS228815bytes，延迟3Dgzip273756bytes；health与diff门禁复查。
+Research implication: 人物标记与房间占用的导航判定依据当前设计几何，减少错误房间上下文，不改变Agent实验控制或EnergyPlus模型。
+Research boundary: 只审计人物移动/房间判定/位置同步链路；不是全仓代码无缺陷声明。导航使用点标记与墙面几何，不是人体通行、安全、家具碰撞或真实人员轨迹验证。点击房间仍是明确的位置跳转，非自动寻路。
+Residual risk: 家具保留装饰用途，无人体半径和门扇动态碰撞；后台语义验证保持mock。保留既有未提交工作。
+
+## 2026-10-27 主动代码审查与第二轮瘦身
+
+Problem: 全量后端267项中发现路线图分类测试失败；严格TypeScript发现无用RAG计数；跨目录共享户型未进入Docker构建上下文；旧WebGL 2D路径、旧主题、无引用drei和已解压安装ZIP造成冗余。
+Minimum fix: D7/E5改为“桥接已验证、校准/物理验证待做”分类，保留阻塞；补齐Docker COPY共享JSON并添加契约测试；删除无用计算并启用未使用代码编译门禁；保留SVG 2D和3D，移除已无调用旧2D/主题、旧home-vitals装饰规则，卸载drei及附带52包。源码先留SHA-256恢复副本；安装ZIP与16个项目缓存目录可恢复隔离。
+Verification evidence: backend pytest269 passed，Ruff通过；Vitest17 passed，Playwright15 passed，严格TypeScript/build/bundle通过；Edge3D页面0脚本错误。node_modules逻辑体积281454329→169761422 bytes（减少111692907）；ZIP移出254821638 bytes，缓存移出2009089 bytes；两项已备份源码39276 bytes；对应内容合计约368.56MB，不是全目录净差或等量物理磁盘释放。3Dgzip273756→223839bytes（约-18.2%），默认2D初始JS228743bytes。`docs/cleanup_review_20261027.md` 与 `output/project-cleanup-audit-20261027/summary.json` 保存范围/清单；隔离根 `P:/project-cleanup-quarantine-20261027-code/`。health ok，EnergyPlus仍9区available；模型连通测试如实mock；Dockerdaemon不可用，未进行镜像构建/部署。
+Research implication: 修复工程可复现输入与路线图状态识别；数据与证据不因瘦身被丢弃。只读claim critic复核确认D7/E5未被升级为校准/现场证据。
+Research boundary: 不改变研究fixtures/指标/假设与模型，保留results/logs/private_memory和已有有效运行时；全量测试不等于全仓无缺陷或安全审计。RQ5仍需独立人工审查。
+Residual risk: 自动审批以blocked by policy拒绝永久删除安装ZIP，因此仅可恢复移动，不声称相应物理磁盘已释放；缓存会在后续运行重新生成。既有未提交业务修改保留，不提交/推送/部署。
+
+## 2026-10-30 离线 API 回归与在线真实模型门禁隔离
+
+Problem: 全量后端回归272 passed、4 failed。在线real-only门禁生效后，流式命令和个性化/自治API旧测试仍设置LLM_MODE=mock直接访问生产依赖，均被503拒绝，未能覆盖原有行为。
+Minimum fix: 增加显式isolated_api_runtime测试fixture，仅4项离线测试通过FastAPI dependency_overrides注入临时目录中的SimulationSessionStore；结束时停止后台自治服务并恢复依赖。生产get_runtime及非real拒绝策略不变。
+Verification evidence: 相关测试40 passed；全后端276 passed（49.48秒）；修改测试文件Ruff通过。前端Vitest17 passed，TypeScript/Vite和bundle门禁通过，初始2D JS228743 bytes、延迟3D gzip223839 bytes。RAG Recall@3=6/6；claim validator structurally_valid=true、submission_ready=false、阻塞RQ5。localhost/health与/api/agent/health本轮均3秒超时，无在线运行成功证据。
+Research implication: 恢复离线API行为回归覆盖，避免在线真实性门禁掩盖测试目标；临时目录隔离测试日志与私有记忆。
+Research boundary: 测试替身仅用于离线确定性验证，不代表真实模型、真实设备或现场行为；本轮未调用DeepSeek或启动模型，不改变实验指标与论文结论。
+Residual risk: 在线服务和浏览器未验证；独立人工语义审查、实测校准仍待完成。DeepSeek等待训练与配对评测，不绕过门禁。保留既有修改，不提交/推送/部署。
+
+## 2026-10-29 在线应用停用 mock、恢复真实模型
+
+Problem: 审查启动时进程 LLM_MODE=mock 覆盖已有真实配置；EnergyPlus harness_real 内部仍固定 MockLLMClient，真实规划混入规则语义。
+Minimum fix: 在线 get_runtime 拒绝非 real 配置并返回503；EnergyPlus在线API拒绝harness_mock并返回400，状态与UI移除该选项；单房间/全屋harness_real均使用RealLLMClient解析语义，失败不回退mock，真实DeepSeek仍承担规划。离线对照类、测试替身和历史证据保留，不改实验夹具或指标。启动现有Ollama与本地规划器，应用进程使用real；GPU训练占用中，Ollama本次仅CPU，超时120秒、0重试。
+Verification evidence: 针对性pytest20 passed，包含在线mock拒绝、真实模型异常不返回mock动作、单区/全屋真实语义失败关闭；目标Ruff通过。Vitest17 passed，TypeScript/Vite生产构建通过。8000/health为ok；agent health真实qwen3:8b连通success=true，revision sha256:500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41，cache_hit=false。实际API“打开客厅灯”success=true、llm_mode=real、cache_hit=false、1次真实请求17729.8ms；证据output/real-only-health-20261029.json、output/real-only-command-20261029.json。在线harness_mock实测HTTP400；EnergyPlus状态available=true、controllers仅rule/manual/harness_real。应用内浏览器检查控制选项无mock，DeepSeek未就绪时禁用。80端口未部署，localhost两项检查拒连，当前开发服务5173/8000。RAG Recall@3=6/6。
+Research implication: 在线审查不再使用mock语义；修正真实物理实验路径中隐藏mock的来源标签。此为运行真实性修复，无新方法优劣结论。
+Research boundary: 真实模型调用不等于所有角色均由LLM推理；确定性规划/审查/护栏仍为程序。住宅与设备仍为软件仿真，EnergyPlus仍为未现场校准软件物理引擎；不能宣称真实住宅或设备验证。
+Residual risk: DeepSeek当前run为v3-curriculum-rerun-20261029，服务ready=false/status=training，未加载模型且配对评测未完成；不绕过该门禁，因此本轮未执行真实DeepSeek物理实验。CPU首次真实health约89秒，首轮控制请求客户端110秒超时；调长本次服务等待后控制命令成功，不把超时记录当成功。未删除数据、改密钥、提交或推送。
+
+## 2026-10-30 删除未引用旧场景组件
+
+Problem: Room.tsx、Devices.tsx、Lighting.tsx、WeatherSky.tsx仍保留旧场景实现；源码引用检查显示只有Room内部引用Devices，其余无使用方；当前入口为HouseScene/HomeScene3D。
+Minimum fix: 删除以上4个Git已跟踪、删除前无未提交修改的文件，共292行；可从Git恢复。
+Verification evidence: Vitest17 passed；TypeScript/Vite及bundle检查通过；生成资源文件名、2D初始JS228743 bytes和3D gzip223839 bytes与删除前相同，说明本轮没有改变生产打包内容。
+Research implication: 减少维护时误用旧实现的可能，不新增研究结果。
+Research boundary: 只清理已确认未引用的前端源码；保留实验结果、日志、私有记忆、离线对照、历史协议及训练数据；未调用模型。
+Residual risk: 未重跑在线浏览器；本轮生产打包内容不变，不宣称新在线验证或全仓已无冗余。
+
+
+## 2026-10-30 DeepSeek V3 隔离灯光联调
+
+Problem: 旧8011服务的V1 tool_calls及training/adapter路径无法直接承接V3 decision/tool_call与training-001产物。
+Minimum fix: 在独立训练工程integration目录建立8012 V3服务和严格灯光power转换器；保留原全局配置与本仓库全部既有修改。
+Verification evidence: P:/smart-home-model-training/integration/final-report-20261030.md；实时模型输出通过生产TaskRunner成功执行，result.json保存blackboard与final_state；backend venv下7项测试通过，服务断连exit1且无执行结果；脚本Ruff通过。
+Research implication: 新增真实本地模型接入生产Harness的软件仿真链路可行性证据。
+Research boundary: 仅客厅灯开关隔离验证，非完整前端/EnergyPlus/多轮自治/硬件效果；semantic为真实模型工具调用的确定性转换。现有roadmap/claim结果和submission_ready不因本次改变。
+Residual risk: 模型无权限及未知设备调用仍需验证器拦截；其他能力未映射，正式产品接入仍待后续工作。
+
+
+## 2026-11-01 V3 多设备power方向冲突
+Problem: 真实模型空调/风扇关闭请求输出on=true，原始四项仅2/4匹配。
+Minimum fix: 独立execute_reviewed适配扩展light/ac/fan并核对注册类型；强制原始user_command，明确开关方向冲突拒绝派发，不改写模型结果。
+Verification: training/integration/power-smoke-20261101（实际路径P:/smart-home-model-training/integration/power-smoke-20261101）保留全部原始请求、输出与执行轨迹；两个真实失败输出在修复后测试回放被拦截。backend venv 16项测试及Ruff通过。
+Boundary: 只支持命名前缀门禁与隔离仿真，不是模型自身理解正确或真实硬件安全；旧调用方需提供user_command。
+Residual risk: 复杂表述未覆盖，模型错误仍在；不切换全局模型，不提升现有论文主张或就绪状态。
+
+
+## 2026-11-01 V3参数组件链路
+Problem: 隔离转换入口只有power，无法接收V3数值能力。
+Minimum fix: 独立训练工程integration能力翻译接入light brightness、ac temperature、fan speed、window opening；保留动态范围和权限/确认门禁。
+Evidence: P:/smart-home-model-training/integration/parameter-smoke-20261101，4条真实模型到隔离仿真参数结果均匹配；backend venv31项测试及Ruff通过。
+Boundary: 仅四个命名冒烟用例，非全量、完整TaskRunner、前端或硬件；既有power错误仍保留。
+Residual risk: 完整链路、窗帘及覆盖清单等仍在推进，不提升原论文claims或submission_ready。
+
+
+## 2026-11-01 V3到EnergyPlus映射边界
+Problem: 真实V3完整TaskRunner结果尚无生产EnergyPlus执行器兼容证据。
+Minimum verification: 不改生产控制器，将5条保存的真实TaskRunner结果以SHA256固定回放map_actions。
+Evidence: P:/smart-home-model-training/integration/energyplus-mapping-20261101，light/ac/fan/window参数接受匹配，curtain拒绝且状态不变，5项断言及Ruff通过。
+Boundary: 只是生产映射回放，不是EnergyPlus引擎闭环、硬件或节能效果；未更改全局LLM配置。
+Residual risk: 可调用桥接/引擎运行及UI仍待完成，保留已有实验主张及外部验证阻塞。
+
+## 2026-11-01 幂等power新工程候选启动（未验收）
+针对12项诊断中已满足目标仍误开设备的问题，独立准备3600/420/420候选数据并完成契约/hash/tokenization检查；原V3数据和评测输出不变。释放本任务8012/13/14服务后串行运行64步pilot，记录P:/smart-home-model-training/runs/v4-power-pilot-20261101，开发门槛见integration/diagnosis-20261101/candidate-protocol.md。当前尚无修复成功结论，前端入口暂不可调用，synthetic且human_reviewed=false，不提升任何论文claim。
+
+## 2026-11-01 候选训练期间服务准入修复
+Problem: 新候选status使用state键，隔离serve_v3原仅读status，health可能断开而非报告未就绪。Fix: 状态兼容且ready依赖完成状态、成功审计与adapter；审计文件存在本身不等于配对验收完成。Verification: training工程11项测试/Ruff通过，临时8015真实HTTP health ready=false、plan409；证据runs/v4-power-pilot-20261101/service-training-admission.json。Boundary: 只证明训练期间拒绝加载的服务门禁，不证明新候选模型正确；训练冻结源码未改。
+
+## 2026-11-02 模型HTTP拒绝取证补齐
+Problem: 隔离TaskRunner的urlopen抛HTTPError时仅保留进程traceback，丢失模型错误响应正文。Fix: training工程integration/model_http_evidence.py在抛错或解析前保存HTTP body原字节及状态/header，并由taskrunner_capabilities调用。Verification: 2项针对测试/Ruff通过；未宣称新增真实推理成功。Boundary: 错误仍阻断，不mock、不修正模型输出、不提升模型或论文结论。
+
+## 2026-11-02 候选门禁失败与独立全预算实验
+Evidence: 原64步pilot完整开发原231/324、增补96/96，低于固定原任务306门槛，拒绝推广；原始420条输出和失败样例保留。独立runs/v4-power-full-20261102从同revision基座新训450步，同冻结数据/参数（仅预算改变），不冒充续训、不降门槛。全屋逐房间照明桥接在训练工程新增3项状态测试并通过2项生产几何/房间约束预检，5项均CPU，不是新增真实模型或物理运行证据。Residual: 完整配对与episode回归、103条HTTP、真实全屋引擎和最终审计仍未完成；不升级论文claim。
+
+## 2026-11-02 短预算候选错误决策诊断
+完整420条开发的93失败已逐条保存于训练工程runs/v4-power-pilot-20261101/pilot-failure-analysis-20261102.json及中文报告。参考reject->call_tool有18条，clarify->call_tool有23条，因此即使新增96开关全部匹配也拒绝该候选。此为合成开发诊断，不能把安全门禁拒绝当模型正确，不证明全预算一定修复，不提升论文claim。

@@ -1,6 +1,7 @@
 from typing import Any
 
 from app.agents.llm_client import LLMClient
+from app.agents.explicit_control import preserve_explicit_control
 from app.schemas.state_schema import SmartHomeState
 
 
@@ -15,6 +16,7 @@ class SemanticAgent:
         user_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         result = self.llm_client.parse_command(user_command, current_state, user_context)
+        result = preserve_explicit_control(result, user_command)
         result["agent"] = "semantic_agent"
         result["user_command"] = user_command
         return result

@@ -38,5 +38,12 @@ class MultiAgentBlackboard:
     def set_metric(self, key: str, value: Any) -> None:
         self.data["metrics"][key] = value
 
+    def set_workflow_graph(self, graph: dict[str, Any]) -> None:
+        self.data["workflow_graph"] = deepcopy(graph)
+
+    def set_workflow_trace_validation(self, validation: dict[str, Any]) -> None:
+        workflow_graph = self.data.setdefault("workflow_graph", {})
+        workflow_graph["trace_validation"] = deepcopy(validation)
+
     def snapshot(self) -> dict[str, Any]:
         return self.data

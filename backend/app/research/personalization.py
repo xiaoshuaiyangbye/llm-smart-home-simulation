@@ -378,7 +378,8 @@ class UserPreferenceService:
         targets = dict(result.get("targets", {}))
         intent = str(result.get("intent", ""))
         room = str(result.get("room", "unknown"))
-        if intent in {"thermal_comfort_control", "study_mode", "movie_mode", "sleep_mode", "basic_ac_control"}:
+        explicit_fields = set(result.get("explicit_control", {}).get("target_fields", []))
+        if "temperature_c_range" not in explicit_fields and intent in {"thermal_comfort_control", "study_mode", "movie_mode", "sleep_mode", "basic_ac_control"}:
             target = self.profile.preferred_temperature_c
             tolerance = self.profile.temperature_tolerance_c
             targets["temperature_c_range"] = [round(target - tolerance, 1), round(target + tolerance, 1)]

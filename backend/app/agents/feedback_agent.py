@@ -1,5 +1,7 @@
 from typing import Any
 
+from app.agents.explicit_control import explicit_feedback
+
 from app.schemas.action_schema import PlannedDeviceAction
 from app.schemas.state_schema import SmartHomeState
 from app.simulation.thermal_model import calculate_apparent_temperature
@@ -7,6 +9,8 @@ from app.simulation.thermal_model import calculate_apparent_temperature
 
 class FeedbackAgent:
     def evaluate(self, semantic_result: dict[str, Any], state: SmartHomeState, revision_round: int = 0) -> dict[str, Any]:
+        if semantic_result.get("explicit_control"):
+            return explicit_feedback(semantic_result, state, revision_round)
         room_id = semantic_result.get("room", "living_room")
         if semantic_result.get("intent") in {"context_update", "occupancy_update"}:
             return {

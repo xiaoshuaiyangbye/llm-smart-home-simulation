@@ -32,6 +32,7 @@ export function LifeSimulationPanel({
   onBackToToday,
 }: LifeSimulationPanelProps) {
   const active = Boolean(status?.active);
+  const hasResults = Boolean(status && (status.completed_event_count > 0 || status.progress_percent > 0));
   const summary = status?.summary ?? {};
   const progress = Math.min(100, Math.max(0, status?.progress_percent ?? 0));
   const responseTimeMs = status?.last_event?.response_time_ms;
@@ -69,8 +70,8 @@ export function LifeSimulationPanel({
       <div className="life-progress" role="progressbar" aria-label="生活仿真进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
         <i style={{ width: `${progress}%` }} />
       </div>
-      <div className="life-sim-kpis">
-        <Metric label="节能率" value={`${formatNumber(summary.energy_saving_vs_baseline_percent)}%`} emphasis />
+      {hasResults ? <><div className="life-sim-kpis">
+        <Metric label="模拟节能率" value={`${formatNumber(summary.energy_saving_vs_baseline_percent)}%`} emphasis />
         <Metric label="居住舒适度" value={formatNumber(summary.average_occupied_comfort)} emphasis />
         <Metric label="智能体能耗" value={`${formatNumber(summary.agent_energy_kwh, 3)} kWh`} />
         <Metric label="固定策略能耗" value={`${formatNumber(summary.baseline_energy_kwh, 3)} kWh`} />
@@ -90,6 +91,7 @@ export function LifeSimulationPanel({
           <Metric label="上次响应" value={typeof responseTimeMs === "number" ? `${(responseTimeMs / 1000).toFixed(1)} s` : "--"} />
         </div>
       </details>
+      </> : <p className="life-empty">开始生活模拟后，这里会显示模拟能耗、舒适度和完成情况。</p>}
       {status?.last_event && (
         <div className="life-last-event">
           <strong>{String(status.last_event.activity ?? "生活事件")}</strong>
